@@ -1,12 +1,41 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
 import { Skeleton } from "./Skeleton";
 import { MixBlend } from "./Animation";
 
-export interface Map<T> {
+export interface StringMap<T> {
 	[key: string]: T;
 }
 
 export class IntSet {
-	array = new Array<number>();
+	array = new Array<number | undefined>();
 
 	add (value: number): boolean {
 		let contains = this.contains(value);
@@ -26,6 +55,40 @@ export class IntSet {
 		this.array.length = 0;
 	}
 }
+
+export class StringSet {
+	entries: StringMap<boolean> = {};
+	size = 0;
+
+	add (value: string): boolean {
+		let contains = this.entries[value];
+		this.entries[value] = true;
+		if (!contains) {
+			this.size++;
+			return true;
+		}
+		return false;
+	}
+
+	addAll (values: string[]): boolean {
+		let oldSize = this.size;
+		for (var i = 0, n = values.length; i < n; i++)
+			this.add(values[i]);
+		return oldSize != this.size;
+	}
+
+	contains (value: string) {
+		return this.entries[value];
+	}
+
+	clear () {
+		this.entries = {};
+		this.size = 0;
+	}
+}
+
+export type NumberArrayLike = Array<number> | Float32Array;
+export type IntArrayLike = Array<number> | Int16Array;
 
 export interface Disposable {
 	dispose (): void;
@@ -50,8 +113,7 @@ export class Color {
 		this.g = g;
 		this.b = b;
 		this.a = a;
-		this.clamp();
-		return this;
+		return this.clamp();
 	}
 
 	setFromColor (c: Color) {
@@ -64,10 +126,10 @@ export class Color {
 
 	setFromString (hex: string) {
 		hex = hex.charAt(0) == '#' ? hex.substr(1) : hex;
-		this.r = parseInt(hex.substr(0, 2), 16) / 255.0;
-		this.g = parseInt(hex.substr(2, 2), 16) / 255.0;
-		this.b = parseInt(hex.substr(4, 2), 16) / 255.0;
-		this.a = (hex.length != 8 ? 255 : parseInt(hex.substr(6, 2), 16)) / 255.0;
+		this.r = parseInt(hex.substr(0, 2), 16) / 255;
+		this.g = parseInt(hex.substr(2, 2), 16) / 255;
+		this.b = parseInt(hex.substr(4, 2), 16) / 255;
+		this.a = hex.length != 8 ? 1 : parseInt(hex.substr(6, 2), 16) / 255;
 		return this;
 	}
 
@@ -76,8 +138,7 @@ export class Color {
 		this.g += g;
 		this.b += b;
 		this.a += a;
-		this.clamp();
-		return this;
+		return this.clamp();
 	}
 
 	clamp () {
@@ -95,7 +156,7 @@ export class Color {
 		return this;
 	}
 
-	static rgba8888ToColor(color: Color, value: number) {
+	static rgba8888ToColor (color: Color, value: number) {
 		color.r = ((value & 0xff000000) >>> 24) / 255;
 		color.g = ((value & 0x00ff0000) >>> 16) / 255;
 		color.b = ((value & 0x0000ff00) >>> 8) / 255;
@@ -107,11 +168,21 @@ export class Color {
 		color.g = ((value & 0x0000ff00) >>> 8) / 255;
 		color.b = ((value & 0x000000ff)) / 255;
 	}
+
+	toRgb888 () {
+		const hex = (x: number) => ("0" + (x * 255).toString(16)).slice(-2);
+		return Number("0x" + hex(this.r) + hex(this.g) + hex(this.b));
+	}
+
+	static fromString (hex: string): Color {
+		return new Color().setFromString(hex);
+	}
 }
 
 export class MathUtils {
 	static PI = 3.1415927;
 	static PI2 = MathUtils.PI * 2;
+	static invPI2 = 1 / MathUtils.PI2;
 	static radiansToDegrees = 180 / MathUtils.PI;
 	static radDeg = MathUtils.radiansToDegrees;
 	static degreesToRadians = MathUtils.PI / 180;
@@ -131,6 +202,10 @@ export class MathUtils {
 		return Math.sin(degrees * MathUtils.degRad);
 	}
 
+	static atan2Deg (y: number, x: number) {
+		return Math.atan2(y, x) * MathUtils.degRad;
+	}
+
 	static signum (value: number): number {
 		return value > 0 ? 1 : value < 0 ? -1 : 0;
 	}
@@ -140,7 +215,7 @@ export class MathUtils {
 	}
 
 	static cbrt (x: number) {
-		let y = Math.pow(Math.abs(x), 1/3);
+		let y = Math.pow(Math.abs(x), 1 / 3);
 		return x < 0 ? -y : y;
 	}
 
@@ -154,11 +229,15 @@ export class MathUtils {
 		if (u <= (mode - min) / d) return min + Math.sqrt(u * d * (mode - min));
 		return max - Math.sqrt((1 - u) * d * (max - mode));
 	}
+
+	static isPowerOfTwo (value: number) {
+		return value && (value & (value - 1)) === 0;
+	}
 }
 
 export abstract class Interpolation {
 	protected abstract applyInternal (a: number): number;
-	apply(start: number, end: number, a: number): number {
+	apply (start: number, end: number, a: number): number {
 		return start + (end - start) * this.applyInternal(a);
 	}
 }
@@ -182,18 +261,23 @@ export class PowOut extends Pow {
 		super(power);
 	}
 
-	applyInternal (a: number) : number {
+	applyInternal (a: number): number {
 		return Math.pow(a - 1, this.power) * (this.power % 2 == 0 ? -1 : 1) + 1;
 	}
 }
 
 export class Utils {
-	static SUPPORTS_TYPED_ARRAYS = typeof(Float32Array) !== "undefined";
+	static SUPPORTS_TYPED_ARRAYS = typeof (Float32Array) !== "undefined";
 
 	static arrayCopy<T> (source: ArrayLike<T>, sourceStart: number, dest: ArrayLike<T>, destStart: number, numElements: number) {
 		for (let i = sourceStart, j = destStart; i < sourceStart + numElements; i++, j++) {
 			dest[j] = source[i];
 		}
+	}
+
+	static arrayFill<T> (array: ArrayLike<T>, fromIndex: number, toIndex: number, value: T) {
+		for (let i = fromIndex; i < toIndex; i++)
+			array[i] = value;
 	}
 
 	static setArraySize<T> (array: Array<T>, size: number, value: any = 0): Array<T> {
@@ -217,23 +301,23 @@ export class Utils {
 		return array;
 	}
 
-	static newFloatArray (size: number): ArrayLike<number> {
-		if (Utils.SUPPORTS_TYPED_ARRAYS) {
+	static newFloatArray (size: number): NumberArrayLike {
+		if (Utils.SUPPORTS_TYPED_ARRAYS)
 			return new Float32Array(size)
-		} else {
-				let array = new Array<number>(size);
-				for (let i = 0; i < array.length; i++) array[i] = 0;
-				return array;
+		else {
+			let array = new Array<number>(size);
+			for (let i = 0; i < array.length; i++) array[i] = 0;
+			return array;
 		}
 	}
 
-	static newShortArray (size: number): ArrayLike<number> {
-		if (Utils.SUPPORTS_TYPED_ARRAYS) {
+	static newShortArray (size: number): IntArrayLike {
+		if (Utils.SUPPORTS_TYPED_ARRAYS)
 			return new Int16Array(size)
-		} else {
-				let array = new Array<number>(size);
-				for (let i = 0; i < array.length; i++) array[i] = 0;
-				return array;
+		else {
+			let array = new Array<number>(size);
+			for (let i = 0; i < array.length; i++) array[i] = 0;
+			return array;
 		}
 	}
 
@@ -247,19 +331,21 @@ export class Utils {
 
 	// This function is used to fix WebKit 602 specific issue described at http://esotericsoftware.com/forum/iOS-10-disappearing-graphics-10109
 	static webkit602BugfixHelper (alpha: number, blend: MixBlend) {
-
 	}
 
 	static contains<T> (array: Array<T>, element: T, identity = true) {
-		for (var i = 0; i < array.length; i++) {
+		for (var i = 0; i < array.length; i++)
 			if (array[i] == element) return true;
-		}
 		return false;
+	}
+
+	static enumValue (type: any, name: string) {
+		return type[name[0].toUpperCase() + name.slice(1)];
 	}
 }
 
 export class DebugUtils {
-	static logBones(skeleton: Skeleton) {
+	static logBones (skeleton: Skeleton) {
 		for (let i = 0; i < skeleton.bones.length; i++) {
 			let bone = skeleton.bones[i];
 			console.log(bone.data.name + ", " + bone.a + ", " + bone.b + ", " + bone.c + ", " + bone.d + ", " + bone.worldX + ", " + bone.worldY);
@@ -276,7 +362,7 @@ export class Pool<T> {
 	}
 
 	obtain () {
-		return this.items.length > 0 ? this.items.pop() : this.instantiator();
+		return this.items.length > 0 ? this.items.pop()! : this.instantiator();
 	}
 
 	free (item: T) {
@@ -285,9 +371,8 @@ export class Pool<T> {
 	}
 
 	freeAll (items: ArrayLike<T>) {
-		for (let i = 0; i < items.length; i++) {
+		for (let i = 0; i < items.length; i++)
 			this.free(items[i]);
-		}
 	}
 
 	clear () {
@@ -369,8 +454,7 @@ export class WindowedMean {
 	}
 
 	addValue (value: number) {
-		if (this.addedValues < this.values.length)
-			this.addedValues++;
+		if (this.addedValues < this.values.length) this.addedValues++;
 		this.values[this.lastValue++] = value;
 		if (this.lastValue > this.values.length - 1) this.lastValue = 0;
 		this.dirty = true;
@@ -380,15 +464,13 @@ export class WindowedMean {
 		if (this.hasEnoughData()) {
 			if (this.dirty) {
 				let mean = 0;
-				for (let i = 0; i < this.values.length; i++) {
+				for (let i = 0; i < this.values.length; i++)
 					mean += this.values[i];
-				}
 				this.mean = mean / this.values.length;
 				this.dirty = false;
 			}
 			return this.mean;
-		} else {
-			return 0;
 		}
+		return 0;
 	}
 }

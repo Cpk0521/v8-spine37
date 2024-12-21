@@ -1,19 +1,50 @@
-import { Animation, Timeline, AttachmentTimeline, RotateTimeline, TranslateTimeline, ScaleTimeline, ShearTimeline, IkConstraintTimeline, TransformConstraintTimeline, PathConstraintPositionTimeline, PathConstraintSpacingTimeline, PathConstraintMixTimeline, DeformTimeline, DrawOrderTimeline, EventTimeline, CurveTimeline, ColorTimeline, TwoColorTimeline } from "./Animation.js";
-import { VertexAttachment, Attachment } from "./attachments/Attachment.js";
-import { AttachmentLoader } from "./attachments/AttachmentLoader.js";
-import { MeshAttachment } from "./attachments/MeshAttachment.js";
-import { BoneData, TransformMode } from "./BoneData.js";
-import { EventData } from "./EventData.js";
-import { Event } from "./Event.js";
-import { IkConstraintData } from "./IkConstraintData.js";
-import { PathConstraintData, PositionMode, SpacingMode, RotateMode } from "./PathConstraintData.js";
-import { SkeletonData } from "./SkeletonData.js";
-import { Skin } from "./Skin.js";
-import { SlotData } from "./SlotData.js";
-import { TransformConstraintData } from "./TransformConstraintData.js";
-import { Utils, Color, ArrayLike } from "./Utils.js";
-import { BlendMode } from "./BlendMode.js";
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
+import { Animation, Timeline, InheritTimeline, AttachmentTimeline, RGBATimeline, RGBTimeline, AlphaTimeline, RGBA2Timeline, RGB2Timeline, RotateTimeline, TranslateTimeline, TranslateXTimeline, TranslateYTimeline, ScaleTimeline, ScaleXTimeline, ScaleYTimeline, ShearTimeline, ShearXTimeline, ShearYTimeline, IkConstraintTimeline, TransformConstraintTimeline, PathConstraintPositionTimeline, PathConstraintSpacingTimeline, PathConstraintMixTimeline, DeformTimeline, DrawOrderTimeline, EventTimeline, CurveTimeline1, CurveTimeline2, CurveTimeline, PhysicsConstraintResetTimeline, PhysicsConstraintInertiaTimeline, PhysicsConstraintStrengthTimeline, PhysicsConstraintDampingTimeline, PhysicsConstraintMassTimeline, PhysicsConstraintWindTimeline, PhysicsConstraintGravityTimeline, PhysicsConstraintMixTimeline } from "./Animation";
+import { VertexAttachment, Attachment } from "./attachments/Attachment";
+import { AttachmentLoader } from "./attachments/AttachmentLoader";
+import { MeshAttachment } from "./attachments/MeshAttachment";
+import { BoneData, Inherit } from "./BoneData";
+import { EventData } from "./EventData";
+import { Event } from "./Event";
+import { IkConstraintData } from "./IkConstraintData";
+import { PathConstraintData, PositionMode, SpacingMode, RotateMode } from "./PathConstraintData";
+import { SkeletonData } from "./SkeletonData";
+import { Skin } from "./Skin";
+import { SlotData, BlendMode } from "./SlotData";
+import { TransformConstraintData } from "./TransformConstraintData";
+import { Utils, Color, NumberArrayLike } from "./Utils";
+import { Sequence, SequenceMode } from "./attachments/Sequence";
+import { SequenceTimeline } from "./Animation";
+import { HasTextureRegion } from "./attachments/HasTextureRegion";
+import { PhysicsConstraintData } from "./PhysicsConstraintData";
 
 /** Loads skeleton data in the Spine JSON format.
  *
@@ -37,21 +68,21 @@ export class SkeletonJson {
 	readSkeletonData (json: string | any): SkeletonData {
 		let scale = this.scale;
 		let skeletonData = new SkeletonData();
-		let root = typeof(json) === "string" ? JSON.parse(json) : json;
+		let root = typeof (json) === "string" ? JSON.parse(json) : json;
 
 		// Skeleton
 		let skeletonMap = root.skeleton;
-		if (skeletonMap != null) {
+		if (skeletonMap) {
 			skeletonData.hash = skeletonMap.hash;
 			skeletonData.version = skeletonMap.spine;
-			if ("3.8.75" == skeletonData.version)
-				throw new Error("Unsupported skeleton data, please export with a newer version of Spine.");
 			skeletonData.x = skeletonMap.x;
 			skeletonData.y = skeletonMap.y;
 			skeletonData.width = skeletonMap.width;
 			skeletonData.height = skeletonMap.height;
+			skeletonData.referenceScale = getValue(skeletonMap, "referenceScale", 100) * scale;
 			skeletonData.fps = skeletonMap.fps;
-			skeletonData.imagesPath = skeletonMap.images;
+			skeletonData.imagesPath = skeletonMap.images ?? null;
+			skeletonData.audioPath = skeletonMap.audio ?? null;
 		}
 
 		// Bones
@@ -59,23 +90,23 @@ export class SkeletonJson {
 			for (let i = 0; i < root.bones.length; i++) {
 				let boneMap = root.bones[i];
 
-				let parent: BoneData = null;
-				let parentName: string = this.getValue(boneMap, "parent", null);
-				if (parentName != null) {
-					parent = skeletonData.findBone(parentName);
-					if (parent == null) throw new Error("Parent bone not found: " + parentName);
-				}
+				let parent: BoneData | null = null;
+				let parentName: string = getValue(boneMap, "parent", null);
+				if (parentName) parent = skeletonData.findBone(parentName);
 				let data = new BoneData(skeletonData.bones.length, boneMap.name, parent);
-				data.length = this.getValue(boneMap, "length", 0) * scale;
-				data.x = this.getValue(boneMap, "x", 0) * scale;
-				data.y = this.getValue(boneMap, "y", 0) * scale;
-				data.rotation = this.getValue(boneMap, "rotation", 0);
-				data.scaleX = this.getValue(boneMap, "scaleX", 1);
-				data.scaleY = this.getValue(boneMap, "scaleY", 1);
-				data.shearX = this.getValue(boneMap, "shearX", 0);
-				data.shearY = this.getValue(boneMap, "shearY", 0);
-				data.transformMode = SkeletonJson.transformModeFromString(this.getValue(boneMap, "transform", "normal"));
-				data.skinRequired = this.getValue(boneMap, "skin", false);
+				data.length = getValue(boneMap, "length", 0) * scale;
+				data.x = getValue(boneMap, "x", 0) * scale;
+				data.y = getValue(boneMap, "y", 0) * scale;
+				data.rotation = getValue(boneMap, "rotation", 0);
+				data.scaleX = getValue(boneMap, "scaleX", 1);
+				data.scaleY = getValue(boneMap, "scaleY", 1);
+				data.shearX = getValue(boneMap, "shearX", 0);
+				data.shearY = getValue(boneMap, "shearY", 0);
+				data.inherit = Utils.enumValue(Inherit, getValue(boneMap, "inherit", "Normal"));
+				data.skinRequired = getValue(boneMap, "skin", false);
+
+				let color = getValue(boneMap, "color", null);
+				if (color) data.color.setFromString(color);
 
 				skeletonData.bones.push(data);
 			}
@@ -85,23 +116,21 @@ export class SkeletonJson {
 		if (root.slots) {
 			for (let i = 0; i < root.slots.length; i++) {
 				let slotMap = root.slots[i];
-				let slotName: string = slotMap.name;
-				let boneName: string = slotMap.bone;
-				let boneData = skeletonData.findBone(boneName);
-				if (boneData == null) throw new Error("Slot bone not found: " + boneName);
+				let slotName = slotMap.name;
+
+				let boneData = skeletonData.findBone(slotMap.bone);
+				if (!boneData) throw new Error(`Couldn't find bone ${slotMap.bone} for slot ${slotName}`);
 				let data = new SlotData(skeletonData.slots.length, slotName, boneData);
 
-				let color: string = this.getValue(slotMap, "color", null);
-				if (color != null) data.color.setFromString(color);
+				let color: string = getValue(slotMap, "color", null);
+				if (color) data.color.setFromString(color);
 
-				let dark: string = this.getValue(slotMap, "dark", null);
-				if (dark != null) {
-					data.darkColor = new Color(1, 1, 1, 1);
-					data.darkColor.setFromString(dark);
-				}
+				let dark: string = getValue(slotMap, "dark", null);
+				if (dark) data.darkColor = Color.fromString(dark);
 
-				data.attachmentName = this.getValue(slotMap, "attachment", null);
-				data.blendMode = SkeletonJson.blendModeFromString(this.getValue(slotMap, "blend", "normal"));
+				data.attachmentName = getValue(slotMap, "attachment", null);
+				data.blendMode = Utils.enumValue(BlendMode, getValue(slotMap, "blend", "normal"));
+				data.visible = getValue(slotMap, "visible", true);
 				skeletonData.slots.push(data);
 			}
 		}
@@ -111,26 +140,25 @@ export class SkeletonJson {
 			for (let i = 0; i < root.ik.length; i++) {
 				let constraintMap = root.ik[i];
 				let data = new IkConstraintData(constraintMap.name);
-				data.order = this.getValue(constraintMap, "order", 0);
-				data.skinRequired = this.getValue(constraintMap, "skin", false);
+				data.order = getValue(constraintMap, "order", 0);
+				data.skinRequired = getValue(constraintMap, "skin", false);
 
-				for (let j = 0; j < constraintMap.bones.length; j++) {
-					let boneName = constraintMap.bones[j];
-					let bone = skeletonData.findBone(boneName);
-					if (bone == null) throw new Error("IK bone not found: " + boneName);
+				for (let ii = 0; ii < constraintMap.bones.length; ii++) {
+					let bone = skeletonData.findBone(constraintMap.bones[ii]);
+					if (!bone) throw new Error(`Couldn't find bone ${constraintMap.bones[ii]} for IK constraint ${constraintMap.name}.`);
 					data.bones.push(bone);
 				}
 
-				let targetName: string = constraintMap.target;
-				data.target = skeletonData.findBone(targetName);
-				if (data.target == null) throw new Error("IK target bone not found: " + targetName);
+				let target = skeletonData.findBone(constraintMap.target);;
+				if (!target) throw new Error(`Couldn't find target bone ${constraintMap.target} for IK constraint ${constraintMap.name}.`);
+				data.target = target;
 
-				data.mix = this.getValue(constraintMap, "mix", 1);
-				data.softness = this.getValue(constraintMap, "softness", 0) * scale;
-				data.bendDirection = this.getValue(constraintMap, "bendPositive", true) ? 1 : -1;
-				data.compress = this.getValue(constraintMap, "compress", false);
-				data.stretch = this.getValue(constraintMap, "stretch", false);
-				data.uniform = this.getValue(constraintMap, "uniform", false);
+				data.mix = getValue(constraintMap, "mix", 1);
+				data.softness = getValue(constraintMap, "softness", 0) * scale;
+				data.bendDirection = getValue(constraintMap, "bendPositive", true) ? 1 : -1;
+				data.compress = getValue(constraintMap, "compress", false);
+				data.stretch = getValue(constraintMap, "stretch", false);
+				data.uniform = getValue(constraintMap, "uniform", false);
 
 				skeletonData.ikConstraints.push(data);
 			}
@@ -141,33 +169,36 @@ export class SkeletonJson {
 			for (let i = 0; i < root.transform.length; i++) {
 				let constraintMap = root.transform[i];
 				let data = new TransformConstraintData(constraintMap.name);
-				data.order = this.getValue(constraintMap, "order", 0);
-				data.skinRequired = this.getValue(constraintMap, "skin", false);
+				data.order = getValue(constraintMap, "order", 0);
+				data.skinRequired = getValue(constraintMap, "skin", false);
 
-				for (let j = 0; j < constraintMap.bones.length; j++) {
-					let boneName = constraintMap.bones[j];
+				for (let ii = 0; ii < constraintMap.bones.length; ii++) {
+					let boneName = constraintMap.bones[ii];
 					let bone = skeletonData.findBone(boneName);
-					if (bone == null) throw new Error("Transform constraint bone not found: " + boneName);
+					if (!bone) throw new Error(`Couldn't find bone ${boneName} for transform constraint ${constraintMap.name}.`);
 					data.bones.push(bone);
 				}
 
 				let targetName: string = constraintMap.target;
-				data.target = skeletonData.findBone(targetName);
-				if (data.target == null) throw new Error("Transform constraint target bone not found: " + targetName);
+				let target = skeletonData.findBone(targetName);
+				if (!target) throw new Error(`Couldn't find target bone ${targetName} for transform constraint ${constraintMap.name}.`);
+				data.target = target;
 
-				data.local = this.getValue(constraintMap, "local", false);
-				data.relative = this.getValue(constraintMap, "relative", false);
-				data.offsetRotation = this.getValue(constraintMap, "rotation", 0);
-				data.offsetX = this.getValue(constraintMap, "x", 0) * scale;
-				data.offsetY = this.getValue(constraintMap, "y", 0) * scale;
-				data.offsetScaleX = this.getValue(constraintMap, "scaleX", 0);
-				data.offsetScaleY = this.getValue(constraintMap, "scaleY", 0);
-				data.offsetShearY = this.getValue(constraintMap, "shearY", 0);
+				data.local = getValue(constraintMap, "local", false);
+				data.relative = getValue(constraintMap, "relative", false);
+				data.offsetRotation = getValue(constraintMap, "rotation", 0);
+				data.offsetX = getValue(constraintMap, "x", 0) * scale;
+				data.offsetY = getValue(constraintMap, "y", 0) * scale;
+				data.offsetScaleX = getValue(constraintMap, "scaleX", 0);
+				data.offsetScaleY = getValue(constraintMap, "scaleY", 0);
+				data.offsetShearY = getValue(constraintMap, "shearY", 0);
 
-				data.rotateMix = this.getValue(constraintMap, "rotateMix", 1);
-				data.translateMix = this.getValue(constraintMap, "translateMix", 1);
-				data.scaleMix = this.getValue(constraintMap, "scaleMix", 1);
-				data.shearMix = this.getValue(constraintMap, "shearMix", 1);
+				data.mixRotate = getValue(constraintMap, "mixRotate", 1);
+				data.mixX = getValue(constraintMap, "mixX", 1);
+				data.mixY = getValue(constraintMap, "mixY", data.mixX);
+				data.mixScaleX = getValue(constraintMap, "mixScaleX", 1);
+				data.mixScaleY = getValue(constraintMap, "mixScaleY", data.mixScaleX);
+				data.mixShearY = getValue(constraintMap, "mixShearY", 1);
 
 				skeletonData.transformConstraints.push(data);
 			}
@@ -178,32 +209,73 @@ export class SkeletonJson {
 			for (let i = 0; i < root.path.length; i++) {
 				let constraintMap = root.path[i];
 				let data = new PathConstraintData(constraintMap.name);
-				data.order = this.getValue(constraintMap, "order", 0);
-				data.skinRequired = this.getValue(constraintMap, "skin", false);
+				data.order = getValue(constraintMap, "order", 0);
+				data.skinRequired = getValue(constraintMap, "skin", false);
 
-				for (let j = 0; j < constraintMap.bones.length; j++) {
-					let boneName = constraintMap.bones[j];
+				for (let ii = 0; ii < constraintMap.bones.length; ii++) {
+					let boneName = constraintMap.bones[ii];
 					let bone = skeletonData.findBone(boneName);
-					if (bone == null) throw new Error("Transform constraint bone not found: " + boneName);
+					if (!bone) throw new Error(`Couldn't find bone ${boneName} for path constraint ${constraintMap.name}.`);
 					data.bones.push(bone);
 				}
 
 				let targetName: string = constraintMap.target;
-				data.target = skeletonData.findSlot(targetName);
-				if (data.target == null) throw new Error("Path target slot not found: " + targetName);
+				let target = skeletonData.findSlot(targetName);
+				if (!target) throw new Error(`Couldn't find target slot ${targetName} for path constraint ${constraintMap.name}.`);
+				data.target = target;
 
-				data.positionMode = SkeletonJson.positionModeFromString(this.getValue(constraintMap, "positionMode", "percent"));
-				data.spacingMode = SkeletonJson.spacingModeFromString(this.getValue(constraintMap, "spacingMode", "length"));
-				data.rotateMode = SkeletonJson.rotateModeFromString(this.getValue(constraintMap, "rotateMode", "tangent"));
-				data.offsetRotation = this.getValue(constraintMap, "rotation", 0);
-				data.position = this.getValue(constraintMap, "position", 0);
+				data.positionMode = Utils.enumValue(PositionMode, getValue(constraintMap, "positionMode", "Percent"));
+				data.spacingMode = Utils.enumValue(SpacingMode, getValue(constraintMap, "spacingMode", "Length"));
+				data.rotateMode = Utils.enumValue(RotateMode, getValue(constraintMap, "rotateMode", "Tangent"));
+				data.offsetRotation = getValue(constraintMap, "rotation", 0);
+				data.position = getValue(constraintMap, "position", 0);
 				if (data.positionMode == PositionMode.Fixed) data.position *= scale;
-				data.spacing = this.getValue(constraintMap, "spacing", 0);
+				data.spacing = getValue(constraintMap, "spacing", 0);
 				if (data.spacingMode == SpacingMode.Length || data.spacingMode == SpacingMode.Fixed) data.spacing *= scale;
-				data.rotateMix = this.getValue(constraintMap, "rotateMix", 1);
-				data.translateMix = this.getValue(constraintMap, "translateMix", 1);
+				data.mixRotate = getValue(constraintMap, "mixRotate", 1);
+				data.mixX = getValue(constraintMap, "mixX", 1);
+				data.mixY = getValue(constraintMap, "mixY", data.mixX);
 
 				skeletonData.pathConstraints.push(data);
+			}
+		}
+
+		// Physics constraints.
+		if (root.physics) {
+			for (let i = 0; i < root.physics.length; i++) {
+				const constraintMap = root.physics[i];
+				const data = new PhysicsConstraintData(constraintMap.name);
+				data.order = getValue(constraintMap, "order", 0);
+				data.skinRequired = getValue(constraintMap, "skin", false);
+
+				const boneName = constraintMap.bone;
+				const bone = skeletonData.findBone(boneName);
+				if (bone == null) throw new Error("Physics bone not found: " + boneName);
+				data.bone = bone;
+
+				data.x = getValue(constraintMap, "x", 0);
+				data.y = getValue(constraintMap, "y", 0);
+				data.rotate = getValue(constraintMap, "rotate", 0);
+				data.scaleX = getValue(constraintMap, "scaleX", 0);
+				data.shearX = getValue(constraintMap, "shearX", 0);
+				data.limit = getValue(constraintMap, "limit", 5000) * scale;
+				data.step = 1 / getValue(constraintMap, "fps", 60);
+				data.inertia = getValue(constraintMap, "inertia", 1);
+				data.strength = getValue(constraintMap, "strength", 100);
+				data.damping = getValue(constraintMap, "damping", 1);
+				data.massInverse = 1 / getValue(constraintMap, "mass", 1);
+				data.wind = getValue(constraintMap, "wind", 0);
+				data.gravity = getValue(constraintMap, "gravity", 0);
+				data.mix = getValue(constraintMap, "mix", 1);
+				data.inertiaGlobal = getValue(constraintMap, "inertiaGlobal", false);
+				data.strengthGlobal = getValue(constraintMap, "strengthGlobal", false);
+				data.dampingGlobal = getValue(constraintMap, "dampingGlobal", false);
+				data.massGlobal = getValue(constraintMap, "massGlobal", false);
+				data.windGlobal = getValue(constraintMap, "windGlobal", false);
+				data.gravityGlobal = getValue(constraintMap, "gravityGlobal", false);
+				data.mixGlobal = getValue(constraintMap, "mixGlobal", false);
+
+				skeletonData.physicsConstraints.push(data);
 			}
 		}
 
@@ -215,43 +287,56 @@ export class SkeletonJson {
 
 				if (skinMap.bones) {
 					for (let ii = 0; ii < skinMap.bones.length; ii++) {
-						let bone = skeletonData.findBone(skinMap.bones[ii]);
-						if (bone == null) throw new Error("Skin bone not found: " + skinMap.bones[i]);
+						let boneName = skinMap.bones[ii];
+						let bone = skeletonData.findBone(boneName);
+						if (!bone) throw new Error(`Couldn't find bone ${boneName} for skin ${skinMap.name}.`);
 						skin.bones.push(bone);
 					}
 				}
 
 				if (skinMap.ik) {
 					for (let ii = 0; ii < skinMap.ik.length; ii++) {
-						let constraint = skeletonData.findIkConstraint(skinMap.ik[ii]);
-						if (constraint == null) throw new Error("Skin IK constraint not found: " + skinMap.ik[i]);
+						let constraintName = skinMap.ik[ii];
+						let constraint = skeletonData.findIkConstraint(constraintName);
+						if (!constraint) throw new Error(`Couldn't find IK constraint ${constraintName} for skin ${skinMap.name}.`);
 						skin.constraints.push(constraint);
 					}
 				}
 
 				if (skinMap.transform) {
 					for (let ii = 0; ii < skinMap.transform.length; ii++) {
-						let constraint = skeletonData.findTransformConstraint(skinMap.transform[ii]);
-						if (constraint == null) throw new Error("Skin transform constraint not found: " + skinMap.transform[i]);
+						let constraintName = skinMap.transform[ii];
+						let constraint = skeletonData.findTransformConstraint(constraintName);
+						if (!constraint) throw new Error(`Couldn't find transform constraint ${constraintName} for skin ${skinMap.name}.`);
 						skin.constraints.push(constraint);
 					}
 				}
 
 				if (skinMap.path) {
 					for (let ii = 0; ii < skinMap.path.length; ii++) {
-						let constraint = skeletonData.findPathConstraint(skinMap.path[ii]);
-						if (constraint == null) throw new Error("Skin path constraint not found: " + skinMap.path[i]);
+						let constraintName = skinMap.path[ii];
+						let constraint = skeletonData.findPathConstraint(constraintName);
+						if (!constraint) throw new Error(`Couldn't find path constraint ${constraintName} for skin ${skinMap.name}.`);
+						skin.constraints.push(constraint);
+					}
+				}
+
+				if (skinMap.physics) {
+					for (let ii = 0; ii < skinMap.physics.length; ii++) {
+						let constraintName = skinMap.physics[ii];
+						let constraint = skeletonData.findPhysicsConstraint(constraintName);
+						if (!constraint) throw new Error(`Couldn't find physics constraint ${constraintName} for skin ${skinMap.name}.`);
 						skin.constraints.push(constraint);
 					}
 				}
 
 				for (let slotName in skinMap.attachments) {
 					let slot = skeletonData.findSlot(slotName);
-					if (slot == null) throw new Error("Slot not found: " + slotName);
+					if (!slot) throw new Error(`Couldn't find slot ${slotName} for skin ${skinMap.name}.`);
 					let slotMap = skinMap.attachments[slotName];
 					for (let entryName in slotMap) {
 						let attachment = this.readAttachment(slotMap[entryName], skin, slot.index, entryName, skeletonData);
-						if (attachment != null) skin.setAttachment(slot.index, entryName, attachment);
+						if (attachment) skin.setAttachment(slot.index, entryName, attachment);
 					}
 				}
 				skeletonData.skins.push(skin);
@@ -262,13 +347,13 @@ export class SkeletonJson {
 		// Linked meshes.
 		for (let i = 0, n = this.linkedMeshes.length; i < n; i++) {
 			let linkedMesh = this.linkedMeshes[i];
-			let skin = linkedMesh.skin == null ? skeletonData.defaultSkin : skeletonData.findSkin(linkedMesh.skin);
-			if (skin == null) throw new Error("Skin not found: " + linkedMesh.skin);
+			let skin = !linkedMesh.skin ? skeletonData.defaultSkin : skeletonData.findSkin(linkedMesh.skin);
+			if (!skin) throw new Error(`Skin not found: ${linkedMesh.skin}`);
 			let parent = skin.getAttachment(linkedMesh.slotIndex, linkedMesh.parent);
-			if (parent == null) throw new Error("Parent mesh not found: " + linkedMesh.parent);
-			linkedMesh.mesh.deformAttachment = linkedMesh.inheritDeform ? <VertexAttachment>parent : <VertexAttachment>linkedMesh.mesh;
-			linkedMesh.mesh.setParentMesh(<MeshAttachment> parent);
-			linkedMesh.mesh.updateUVs();
+			if (!parent) throw new Error(`Parent mesh not found: ${linkedMesh.parent}`);
+			linkedMesh.mesh.timelineAttachment = linkedMesh.inheritTimeline ? <VertexAttachment>parent : <VertexAttachment>linkedMesh.mesh;
+			linkedMesh.mesh.setParentMesh(<MeshAttachment>parent);
+			if (linkedMesh.mesh.region != null) linkedMesh.mesh.updateRegion();
 		}
 		this.linkedMeshes.length = 0;
 
@@ -277,13 +362,13 @@ export class SkeletonJson {
 			for (let eventName in root.events) {
 				let eventMap = root.events[eventName];
 				let data = new EventData(eventName);
-				data.intValue = this.getValue(eventMap, "int", 0);
-				data.floatValue = this.getValue(eventMap, "float", 0);
-				data.stringValue = this.getValue(eventMap, "string", "");
-				data.audioPath = this.getValue(eventMap, "audio", null);
-				if (data.audioPath != null) {
-					data.volume = this.getValue(eventMap, "volume", 1);
-					data.balance = this.getValue(eventMap, "balance", 0);
+				data.intValue = getValue(eventMap, "int", 0);
+				data.floatValue = getValue(eventMap, "float", 0);
+				data.stringValue = getValue(eventMap, "string", "");
+				data.audioPath = getValue(eventMap, "audio", null);
+				if (data.audioPath) {
+					data.volume = getValue(eventMap, "volume", 1);
+					data.balance = getValue(eventMap, "balance", 0);
 				}
 				skeletonData.events.push(data);
 			}
@@ -300,56 +385,58 @@ export class SkeletonJson {
 		return skeletonData;
 	}
 
-	readAttachment (map: any, skin: Skin, slotIndex: number, name: string, skeletonData: SkeletonData): Attachment {
+	readAttachment (map: any, skin: Skin, slotIndex: number, name: string, skeletonData: SkeletonData): Attachment | null {
 		let scale = this.scale;
-		name = this.getValue(map, "name", name);
+		name = getValue(map, "name", name);
 
-		let type = this.getValue(map, "type", "region");
-
-		switch (type) {
+		switch (getValue(map, "type", "region")) {
 			case "region": {
-				let path = this.getValue(map, "path", name);
-				let region = this.attachmentLoader.newRegionAttachment(skin, name, path);
-				if (region == null) return null;
+				let path = getValue(map, "path", name);
+				let sequence = this.readSequence(getValue(map, "sequence", null));
+				let region = this.attachmentLoader.newRegionAttachment(skin, name, path, sequence);
+				if (!region) return null;
 				region.path = path;
-				region.x = this.getValue(map, "x", 0) * scale;
-				region.y = this.getValue(map, "y", 0) * scale;
-				region.scaleX = this.getValue(map, "scaleX", 1);
-				region.scaleY = this.getValue(map, "scaleY", 1);
-				region.rotation = this.getValue(map, "rotation", 0);
+				region.x = getValue(map, "x", 0) * scale;
+				region.y = getValue(map, "y", 0) * scale;
+				region.scaleX = getValue(map, "scaleX", 1);
+				region.scaleY = getValue(map, "scaleY", 1);
+				region.rotation = getValue(map, "rotation", 0);
 				region.width = map.width * scale;
 				region.height = map.height * scale;
+				region.sequence = sequence;
 
-				let color: string = this.getValue(map, "color", null);
-				if (color != null) region.color.setFromString(color);
+				let color: string = getValue(map, "color", null);
+				if (color) region.color.setFromString(color);
 
-				region.updateOffset();
+				if (region.region != null) region.updateRegion();
 				return region;
 			}
 			case "boundingbox": {
 				let box = this.attachmentLoader.newBoundingBoxAttachment(skin, name);
-				if (box == null) return null;
+				if (!box) return null;
 				this.readVertices(map, box, map.vertexCount << 1);
-				let color: string = this.getValue(map, "color", null);
-				if (color != null) box.color.setFromString(color);
+				let color: string = getValue(map, "color", null);
+				if (color) box.color.setFromString(color);
 				return box;
 			}
 			case "mesh":
 			case "linkedmesh": {
-				let path = this.getValue(map, "path", name);
-				let mesh = this.attachmentLoader.newMeshAttachment(skin, name, path);
-				if (mesh == null) return null;
+				let path = getValue(map, "path", name);
+				let sequence = this.readSequence(getValue(map, "sequence", null));
+				let mesh = this.attachmentLoader.newMeshAttachment(skin, name, path, sequence);
+				if (!mesh) return null;
 				mesh.path = path;
 
-				let color = this.getValue(map, "color", null);
-				if (color != null) mesh.color.setFromString(color);
+				let color = getValue(map, "color", null);
+				if (color) mesh.color.setFromString(color);
 
-				mesh.width = this.getValue(map, "width", 0) * scale;
-				mesh.height = this.getValue(map, "height", 0) * scale;
+				mesh.width = getValue(map, "width", 0) * scale;
+				mesh.height = getValue(map, "height", 0) * scale;
+				mesh.sequence = sequence;
 
-				let parent: string = this.getValue(map, "parent", null);
-				if (parent != null) {
-					this.linkedMeshes.push(new LinkedMesh(mesh, <string> this.getValue(map, "skin", null), slotIndex, parent, this.getValue(map, "deform", true)));
+				let parent: string = getValue(map, "parent", null);
+				if (parent) {
+					this.linkedMeshes.push(new LinkedMesh(mesh, <string>getValue(map, "skin", null), slotIndex, parent, getValue(map, "timelines", true)));
 					return mesh;
 				}
 
@@ -357,17 +444,17 @@ export class SkeletonJson {
 				this.readVertices(map, mesh, uvs.length);
 				mesh.triangles = map.triangles;
 				mesh.regionUVs = uvs;
-				mesh.updateUVs();
+				if (mesh.region != null) mesh.updateRegion();
 
-				mesh.edges = this.getValue(map, "edges", null);
-				mesh.hullLength = this.getValue(map, "hull", 0) * 2;
+				mesh.edges = getValue(map, "edges", null);
+				mesh.hullLength = getValue(map, "hull", 0) * 2;
 				return mesh;
 			}
 			case "path": {
 				let path = this.attachmentLoader.newPathAttachment(skin, name);
-				if (path == null) return null;
-				path.closed = this.getValue(map, "closed", false);
-				path.constantSpeed = this.getValue(map, "constantSpeed", true);
+				if (!path) return null;
+				path.closed = getValue(map, "closed", false);
+				path.constantSpeed = getValue(map, "constantSpeed", true);
 
 				let vertexCount = map.vertexCount;
 				this.readVertices(map, path, vertexCount << 1);
@@ -377,41 +464,46 @@ export class SkeletonJson {
 					lengths[i] = map.lengths[i] * scale;
 				path.lengths = lengths;
 
-				let color: string = this.getValue(map, "color", null);
-				if (color != null) path.color.setFromString(color);
+				let color: string = getValue(map, "color", null);
+				if (color) path.color.setFromString(color);
 				return path;
 			}
 			case "point": {
 				let point = this.attachmentLoader.newPointAttachment(skin, name);
-				if (point == null) return null;
-				point.x = this.getValue(map, "x", 0) * scale;
-				point.y = this.getValue(map, "y", 0) * scale;
-				point.rotation = this.getValue(map, "rotation", 0);
+				if (!point) return null;
+				point.x = getValue(map, "x", 0) * scale;
+				point.y = getValue(map, "y", 0) * scale;
+				point.rotation = getValue(map, "rotation", 0);
 
-				let color = this.getValue(map, "color", null);
-				if (color != null) point.color.setFromString(color);
+				let color = getValue(map, "color", null);
+				if (color) point.color.setFromString(color);
 				return point;
 			}
 			case "clipping": {
 				let clip = this.attachmentLoader.newClippingAttachment(skin, name);
-				if (clip == null) return null;
+				if (!clip) return null;
 
-				let end = this.getValue(map, "end", null);
-				if (end != null) {
-					let slot = skeletonData.findSlot(end);
-					if (slot == null) throw new Error("Clipping end slot not found: " + end);
-					clip.endSlot = slot;
-				}
+				let end = getValue(map, "end", null);
+				if (end) clip.endSlot = skeletonData.findSlot(end);
 
 				let vertexCount = map.vertexCount;
 				this.readVertices(map, clip, vertexCount << 1);
 
-				let color: string = this.getValue(map, "color", null);
-				if (color != null) clip.color.setFromString(color);
+				let color: string = getValue(map, "color", null);
+				if (color) clip.color.setFromString(color);
 				return clip;
 			}
 		}
 		return null;
+	}
+
+	readSequence (map: any) {
+		if (map == null) return null;
+		let sequence = new Sequence(getValue(map, "count", 0));
+		sequence.start = getValue(map, "start", 1);
+		sequence.digits = getValue(map, "digits", 0);
+		sequence.setupIndex = getValue(map, "setup", 0);
+		return sequence;
 	}
 
 	readVertices (map: any, attachment: VertexAttachment, verticesLength: number) {
@@ -446,63 +538,156 @@ export class SkeletonJson {
 	readAnimation (map: any, name: string, skeletonData: SkeletonData) {
 		let scale = this.scale;
 		let timelines = new Array<Timeline>();
-		let duration = 0;
 
 		// Slot timelines.
 		if (map.slots) {
 			for (let slotName in map.slots) {
 				let slotMap = map.slots[slotName];
-				let slotIndex = skeletonData.findSlotIndex(slotName);
-				if (slotIndex == -1) throw new Error("Slot not found: " + slotName);
+				let slot = skeletonData.findSlot(slotName);
+				if (!slot) throw new Error("Slot not found: " + slotName);
+				let slotIndex = slot.index;
 				for (let timelineName in slotMap) {
 					let timelineMap = slotMap[timelineName];
+					if (!timelineMap) continue;
+					let frames = timelineMap.length;
 					if (timelineName == "attachment") {
-						let timeline = new AttachmentTimeline(timelineMap.length);
-						timeline.slotIndex = slotIndex;
-
-						let frameIndex = 0;
-						for (let i = 0; i < timelineMap.length; i++) {
-							let valueMap = timelineMap[i];
-							timeline.setFrame(frameIndex++, this.getValue(valueMap, "time", 0), valueMap.name);
+						let timeline = new AttachmentTimeline(frames, slotIndex);
+						for (let frame = 0; frame < frames; frame++) {
+							let keyMap = timelineMap[frame];
+							timeline.setFrame(frame, getValue(keyMap, "time", 0), getValue(keyMap, "name", null));
 						}
 						timelines.push(timeline);
-						duration = Math.max(duration, timeline.frames[timeline.getFrameCount() - 1]);
-					} else if (timelineName == "color") {
-						let timeline = new ColorTimeline(timelineMap.length);
-						timeline.slotIndex = slotIndex;
 
-						let frameIndex = 0;
-						for (let i = 0; i < timelineMap.length; i++) {
-							let valueMap = timelineMap[i];
-							let color = new Color();
-							color.setFromString(valueMap.color);
-							timeline.setFrame(frameIndex, this.getValue(valueMap, "time", 0), color.r, color.g, color.b, color.a);
-							this.readCurve(valueMap, timeline, frameIndex);
-							frameIndex++;
+					} else if (timelineName == "rgba") {
+						let timeline = new RGBATimeline(frames, frames << 2, slotIndex);
+						let keyMap = timelineMap[0];
+						let time = getValue(keyMap, "time", 0);
+						let color = Color.fromString(keyMap.color);
+
+						for (let frame = 0, bezier = 0; ; frame++) {
+							timeline.setFrame(frame, time, color.r, color.g, color.b, color.a);
+							let nextMap = timelineMap[frame + 1];
+							if (!nextMap) {
+								timeline.shrink(bezier);
+								break;
+							}
+							let time2 = getValue(nextMap, "time", 0);
+							let newColor = Color.fromString(nextMap.color);
+							let curve = keyMap.curve;
+							if (curve) {
+								bezier = readCurve(curve, timeline, bezier, frame, 0, time, time2, color.r, newColor.r, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 1, time, time2, color.g, newColor.g, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 2, time, time2, color.b, newColor.b, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 3, time, time2, color.a, newColor.a, 1);
+							}
+							time = time2;
+							color = newColor;
+							keyMap = nextMap;
 						}
+
 						timelines.push(timeline);
-						duration = Math.max(duration, timeline.frames[(timeline.getFrameCount() - 1) * ColorTimeline.ENTRIES]);
 
-					} else if (timelineName == "twoColor") {
-						let timeline = new TwoColorTimeline(timelineMap.length);
-						timeline.slotIndex = slotIndex;
+					} else if (timelineName == "rgb") {
+						let timeline = new RGBTimeline(frames, frames * 3, slotIndex);
+						let keyMap = timelineMap[0];
+						let time = getValue(keyMap, "time", 0);
+						let color = Color.fromString(keyMap.color);
 
-						let frameIndex = 0;
-						for (let i = 0; i < timelineMap.length; i++) {
-							let valueMap = timelineMap[i];
-							let light = new Color();
-							let dark = new Color();
-							light.setFromString(valueMap.light);
-							dark.setFromString(valueMap.dark);
-							timeline.setFrame(frameIndex, this.getValue(valueMap, "time", 0), light.r, light.g, light.b, light.a, dark.r, dark.g, dark.b);
-							this.readCurve(valueMap, timeline, frameIndex);
-							frameIndex++;
+						for (let frame = 0, bezier = 0; ; frame++) {
+							timeline.setFrame(frame, time, color.r, color.g, color.b);
+							let nextMap = timelineMap[frame + 1];
+							if (!nextMap) {
+								timeline.shrink(bezier);
+								break;
+							}
+							let time2 = getValue(nextMap, "time", 0);
+							let newColor = Color.fromString(nextMap.color);
+							let curve = keyMap.curve;
+							if (curve) {
+								bezier = readCurve(curve, timeline, bezier, frame, 0, time, time2, color.r, newColor.r, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 1, time, time2, color.g, newColor.g, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 2, time, time2, color.b, newColor.b, 1);
+							}
+							time = time2;
+							color = newColor;
+							keyMap = nextMap;
 						}
-						timelines.push(timeline);
-						duration = Math.max(duration, timeline.frames[(timeline.getFrameCount() - 1) * TwoColorTimeline.ENTRIES]);
 
-					} else
-						throw new Error("Invalid timeline type for a slot: " + timelineName + " (" + slotName + ")");
+						timelines.push(timeline);
+
+					} else if (timelineName == "alpha") {
+						timelines.push(readTimeline1(timelineMap, new AlphaTimeline(frames, frames, slotIndex), 0, 1));
+					} else if (timelineName == "rgba2") {
+						let timeline = new RGBA2Timeline(frames, frames * 7, slotIndex);
+
+						let keyMap = timelineMap[0];
+						let time = getValue(keyMap, "time", 0);
+						let color = Color.fromString(keyMap.light);
+						let color2 = Color.fromString(keyMap.dark);
+
+						for (let frame = 0, bezier = 0; ; frame++) {
+							timeline.setFrame(frame, time, color.r, color.g, color.b, color.a, color2.r, color2.g, color2.b);
+							let nextMap = timelineMap[frame + 1];
+							if (!nextMap) {
+								timeline.shrink(bezier);
+								break;
+							}
+							let time2 = getValue(nextMap, "time", 0);
+							let newColor = Color.fromString(nextMap.light);
+							let newColor2 = Color.fromString(nextMap.dark);
+							let curve = keyMap.curve;
+							if (curve) {
+								bezier = readCurve(curve, timeline, bezier, frame, 0, time, time2, color.r, newColor.r, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 1, time, time2, color.g, newColor.g, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 2, time, time2, color.b, newColor.b, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 3, time, time2, color.a, newColor.a, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 4, time, time2, color2.r, newColor2.r, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 5, time, time2, color2.g, newColor2.g, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 6, time, time2, color2.b, newColor2.b, 1);
+							}
+							time = time2;
+							color = newColor;
+							color2 = newColor2;
+							keyMap = nextMap;
+						}
+
+						timelines.push(timeline);
+
+					} else if (timelineName == "rgb2") {
+						let timeline = new RGB2Timeline(frames, frames * 6, slotIndex);
+
+						let keyMap = timelineMap[0];
+						let time = getValue(keyMap, "time", 0);
+						let color = Color.fromString(keyMap.light);
+						let color2 = Color.fromString(keyMap.dark);
+
+						for (let frame = 0, bezier = 0; ; frame++) {
+							timeline.setFrame(frame, time, color.r, color.g, color.b, color2.r, color2.g, color2.b);
+							let nextMap = timelineMap[frame + 1];
+							if (!nextMap) {
+								timeline.shrink(bezier);
+								break;
+							}
+							let time2 = getValue(nextMap, "time", 0);
+							let newColor = Color.fromString(nextMap.light);
+							let newColor2 = Color.fromString(nextMap.dark);
+							let curve = keyMap.curve;
+							if (curve) {
+								bezier = readCurve(curve, timeline, bezier, frame, 0, time, time2, color.r, newColor.r, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 1, time, time2, color.g, newColor.g, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 2, time, time2, color.b, newColor.b, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 3, time, time2, color2.r, newColor2.r, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 4, time, time2, color2.g, newColor2.g, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 5, time, time2, color2.b, newColor2.b, 1);
+							}
+							time = time2;
+							color = newColor;
+							color2 = newColor2;
+							keyMap = nextMap;
+						}
+
+						timelines.push(timeline);
+					}
 				}
 			}
 		}
@@ -511,51 +696,51 @@ export class SkeletonJson {
 		if (map.bones) {
 			for (let boneName in map.bones) {
 				let boneMap = map.bones[boneName];
-				let boneIndex = skeletonData.findBoneIndex(boneName);
-				if (boneIndex == -1) throw new Error("Bone not found: " + boneName);
+				let bone = skeletonData.findBone(boneName);
+				if (!bone) throw new Error("Bone not found: " + boneName);
+				let boneIndex = bone.index;
 				for (let timelineName in boneMap) {
 					let timelineMap = boneMap[timelineName];
+					let frames = timelineMap.length;
+					if (frames == 0) continue;
+
 					if (timelineName === "rotate") {
-						let timeline = new RotateTimeline(timelineMap.length);
-						timeline.boneIndex = boneIndex;
-
-						let frameIndex = 0;
-						for (let i = 0; i < timelineMap.length; i++) {
-							let valueMap = timelineMap[i];
-							timeline.setFrame(frameIndex, this.getValue(valueMap, "time", 0), this.getValue(valueMap, "angle", 0));
-							this.readCurve(valueMap, timeline, frameIndex);
-							frameIndex++;
+						timelines.push(readTimeline1(timelineMap, new RotateTimeline(frames, frames, boneIndex), 0, 1));
+					} else if (timelineName === "translate") {
+						let timeline = new TranslateTimeline(frames, frames << 1, boneIndex);
+						timelines.push(readTimeline2(timelineMap, timeline, "x", "y", 0, scale));
+					} else if (timelineName === "translatex") {
+						let timeline = new TranslateXTimeline(frames, frames, boneIndex);
+						timelines.push(readTimeline1(timelineMap, timeline, 0, scale));
+					} else if (timelineName === "translatey") {
+						let timeline = new TranslateYTimeline(frames, frames, boneIndex);
+						timelines.push(readTimeline1(timelineMap, timeline, 0, scale));
+					} else if (timelineName === "scale") {
+						let timeline = new ScaleTimeline(frames, frames << 1, boneIndex);
+						timelines.push(readTimeline2(timelineMap, timeline, "x", "y", 1, 1));
+					} else if (timelineName === "scalex") {
+						let timeline = new ScaleXTimeline(frames, frames, boneIndex);
+						timelines.push(readTimeline1(timelineMap, timeline, 1, 1));
+					} else if (timelineName === "scaley") {
+						let timeline = new ScaleYTimeline(frames, frames, boneIndex);
+						timelines.push(readTimeline1(timelineMap, timeline, 1, 1));
+					} else if (timelineName === "shear") {
+						let timeline = new ShearTimeline(frames, frames << 1, boneIndex);
+						timelines.push(readTimeline2(timelineMap, timeline, "x", "y", 0, 1));
+					} else if (timelineName === "shearx") {
+						let timeline = new ShearXTimeline(frames, frames, boneIndex);
+						timelines.push(readTimeline1(timelineMap, timeline, 0, 1));
+					} else if (timelineName === "sheary") {
+						let timeline = new ShearYTimeline(frames, frames, boneIndex);
+						timelines.push(readTimeline1(timelineMap, timeline, 0, 1));
+					} else if (timelineName === "inherit") {
+						let timeline = new InheritTimeline(frames, bone.index);
+						for (let frame = 0; frame < timelineMap.length; frame++) {
+							let aFrame = timelineMap[frame];
+							timeline.setFrame(frame, getValue(aFrame, "time", 0), Utils.enumValue(Inherit, getValue(aFrame, "inherit", "Normal")));
 						}
 						timelines.push(timeline);
-						duration = Math.max(duration, timeline.frames[(timeline.getFrameCount() - 1) * RotateTimeline.ENTRIES]);
-
-					} else if (timelineName === "translate" || timelineName === "scale" || timelineName === "shear") {
-						let timeline: TranslateTimeline = null;
-						let timelineScale = 1, defaultValue = 0;
-						if (timelineName === "scale") {
-							timeline = new ScaleTimeline(timelineMap.length);
-							defaultValue = 1;
-						} else if (timelineName === "shear")
-							timeline = new ShearTimeline(timelineMap.length);
-						else {
-							timeline = new TranslateTimeline(timelineMap.length);
-							timelineScale = scale;
-						}
-						timeline.boneIndex = boneIndex;
-
-						let frameIndex = 0;
-						for (let i = 0; i < timelineMap.length; i++) {
-							let valueMap = timelineMap[i];
-							let x = this.getValue(valueMap, "x", defaultValue), y = this.getValue(valueMap, "y", defaultValue);
-							timeline.setFrame(frameIndex, this.getValue(valueMap, "time", 0), x * timelineScale, y * timelineScale);
-							this.readCurve(valueMap, timeline, frameIndex);
-							frameIndex++;
-						}
-						timelines.push(timeline);
-						duration = Math.max(duration, timeline.frames[(timeline.getFrameCount() - 1) * TranslateTimeline.ENTRIES]);
-
-					} else
-						throw new Error("Invalid timeline type for a bone: " + timelineName + " (" + boneName + ")");
+					}
 				}
 			}
 		}
@@ -564,40 +749,99 @@ export class SkeletonJson {
 		if (map.ik) {
 			for (let constraintName in map.ik) {
 				let constraintMap = map.ik[constraintName];
+				let keyMap = constraintMap[0];
+				if (!keyMap) continue;
+
 				let constraint = skeletonData.findIkConstraint(constraintName);
-				let timeline = new IkConstraintTimeline(constraintMap.length);
-				timeline.ikConstraintIndex = skeletonData.ikConstraints.indexOf(constraint);
-				let frameIndex = 0;
-				for (let i = 0; i < constraintMap.length; i++) {
-					let valueMap = constraintMap[i];
-					timeline.setFrame(frameIndex, this.getValue(valueMap, "time", 0), this.getValue(valueMap, "mix", 1), this.getValue(valueMap, "softness", 0) * scale,
-						this.getValue(valueMap, "bendPositive", true) ? 1 : -1, this.getValue(valueMap, "compress", false), this.getValue(valueMap, "stretch", false));
-					this.readCurve(valueMap, timeline, frameIndex);
-					frameIndex++;
+				if (!constraint) throw new Error("IK Constraint not found: " + constraintName);
+				let constraintIndex = skeletonData.ikConstraints.indexOf(constraint);
+				let timeline = new IkConstraintTimeline(constraintMap.length, constraintMap.length << 1, constraintIndex);
+
+				let time = getValue(keyMap, "time", 0);
+				let mix = getValue(keyMap, "mix", 1);
+				let softness = getValue(keyMap, "softness", 0) * scale;
+
+				for (let frame = 0, bezier = 0; ; frame++) {
+					timeline.setFrame(frame, time, mix, softness, getValue(keyMap, "bendPositive", true) ? 1 : -1, getValue(keyMap, "compress", false), getValue(keyMap, "stretch", false));
+					let nextMap = constraintMap[frame + 1];
+					if (!nextMap) {
+						timeline.shrink(bezier);
+						break;
+					}
+
+					let time2 = getValue(nextMap, "time", 0);
+					let mix2 = getValue(nextMap, "mix", 1);
+					let softness2 = getValue(nextMap, "softness", 0) * scale;
+					let curve = keyMap.curve;
+					if (curve) {
+						bezier = readCurve(curve, timeline, bezier, frame, 0, time, time2, mix, mix2, 1);
+						bezier = readCurve(curve, timeline, bezier, frame, 1, time, time2, softness, softness2, scale);
+					}
+
+					time = time2;
+					mix = mix2;
+					softness = softness2;
+					keyMap = nextMap;
 				}
 				timelines.push(timeline);
-				duration = Math.max(duration, timeline.frames[(timeline.getFrameCount() - 1) * IkConstraintTimeline.ENTRIES]);
 			}
 		}
 
 		// Transform constraint timelines.
 		if (map.transform) {
 			for (let constraintName in map.transform) {
-				let constraintMap = map.transform[constraintName];
+				let timelineMap = map.transform[constraintName];
+				let keyMap = timelineMap[0];
+				if (!keyMap) continue;
+
 				let constraint = skeletonData.findTransformConstraint(constraintName);
-				let timeline = new TransformConstraintTimeline(constraintMap.length);
-				timeline.transformConstraintIndex = skeletonData.transformConstraints.indexOf(constraint);
-				let frameIndex = 0;
-				for (let i = 0; i < constraintMap.length; i++) {
-					let valueMap = constraintMap[i];
-					timeline.setFrame(frameIndex, this.getValue(valueMap, "time", 0), this.getValue(valueMap, "rotateMix", 1),
-						this.getValue(valueMap, "translateMix", 1), this.getValue(valueMap, "scaleMix", 1), this.getValue(valueMap, "shearMix", 1));
-					this.readCurve(valueMap, timeline, frameIndex);
-					frameIndex++;
+				if (!constraint) throw new Error("Transform constraint not found: " + constraintName);
+				let constraintIndex = skeletonData.transformConstraints.indexOf(constraint);
+				let timeline = new TransformConstraintTimeline(timelineMap.length, timelineMap.length * 6, constraintIndex);
+
+				let time = getValue(keyMap, "time", 0);
+				let mixRotate = getValue(keyMap, "mixRotate", 1);
+				let mixX = getValue(keyMap, "mixX", 1);
+				let mixY = getValue(keyMap, "mixY", mixX);
+				let mixScaleX = getValue(keyMap, "mixScaleX", 1);
+				let mixScaleY = getValue(keyMap, "mixScaleY", mixScaleX);
+				let mixShearY = getValue(keyMap, "mixShearY", 1);
+
+				for (let frame = 0, bezier = 0; ; frame++) {
+					timeline.setFrame(frame, time, mixRotate, mixX, mixY, mixScaleX, mixScaleY, mixShearY);
+					let nextMap = timelineMap[frame + 1];
+					if (!nextMap) {
+						timeline.shrink(bezier);
+						break;
+					}
+
+					let time2 = getValue(nextMap, "time", 0);
+					let mixRotate2 = getValue(nextMap, "mixRotate", 1);
+					let mixX2 = getValue(nextMap, "mixX", 1);
+					let mixY2 = getValue(nextMap, "mixY", mixX2);
+					let mixScaleX2 = getValue(nextMap, "mixScaleX", 1);
+					let mixScaleY2 = getValue(nextMap, "mixScaleY", mixScaleX2);
+					let mixShearY2 = getValue(nextMap, "mixShearY", 1);
+					let curve = keyMap.curve;
+					if (curve) {
+						bezier = readCurve(curve, timeline, bezier, frame, 0, time, time2, mixRotate, mixRotate2, 1);
+						bezier = readCurve(curve, timeline, bezier, frame, 1, time, time2, mixX, mixX2, 1);
+						bezier = readCurve(curve, timeline, bezier, frame, 2, time, time2, mixY, mixY2, 1);
+						bezier = readCurve(curve, timeline, bezier, frame, 3, time, time2, mixScaleX, mixScaleX2, 1);
+						bezier = readCurve(curve, timeline, bezier, frame, 4, time, time2, mixScaleY, mixScaleY2, 1);
+						bezier = readCurve(curve, timeline, bezier, frame, 5, time, time2, mixShearY, mixShearY2, 1);
+					}
+
+					time = time2;
+					mixRotate = mixRotate2;
+					mixX = mixX2;
+					mixY = mixY2;
+					mixScaleX = mixScaleX2;
+					mixScaleY = mixScaleY2;
+					mixScaleX = mixScaleX2;
+					keyMap = nextMap;
 				}
 				timelines.push(timeline);
-				duration = Math.max(duration,
-					timeline.frames[(timeline.getFrameCount() - 1) * TransformConstraintTimeline.ENTRIES]);
 			}
 		}
 
@@ -605,124 +849,199 @@ export class SkeletonJson {
 		if (map.path) {
 			for (let constraintName in map.path) {
 				let constraintMap = map.path[constraintName];
-				let index = skeletonData.findPathConstraintIndex(constraintName);
-				if (index == -1) throw new Error("Path constraint not found: " + constraintName);
-				let data = skeletonData.pathConstraints[index];
+				let constraint = skeletonData.findPathConstraint(constraintName);
+				if (!constraint) throw new Error("Path constraint not found: " + constraintName);
+				let constraintIndex = skeletonData.pathConstraints.indexOf(constraint);
 				for (let timelineName in constraintMap) {
 					let timelineMap = constraintMap[timelineName];
-					if (timelineName === "position" || timelineName === "spacing") {
-						let timeline: PathConstraintPositionTimeline = null;
-						let timelineScale = 1;
-						if (timelineName === "spacing") {
-							timeline = new PathConstraintSpacingTimeline(timelineMap.length);
-							if (data.spacingMode == SpacingMode.Length || data.spacingMode == SpacingMode.Fixed) timelineScale = scale;
-						} else {
-							timeline = new PathConstraintPositionTimeline(timelineMap.length);
-							if (data.positionMode == PositionMode.Fixed) timelineScale = scale;
-						}
-						timeline.pathConstraintIndex = index;
-						let frameIndex = 0;
-						for (let i = 0; i < timelineMap.length; i++) {
-							let valueMap = timelineMap[i];
-							timeline.setFrame(frameIndex, this.getValue(valueMap, "time", 0), this.getValue(valueMap, timelineName, 0) * timelineScale);
-							this.readCurve(valueMap, timeline, frameIndex);
-							frameIndex++;
-						}
-						timelines.push(timeline);
-						duration = Math.max(duration,
-							timeline.frames[(timeline.getFrameCount() - 1) * PathConstraintPositionTimeline.ENTRIES]);
+					let keyMap = timelineMap[0];
+					if (!keyMap) continue;
+
+					let frames = timelineMap.length;
+					if (timelineName === "position") {
+						let timeline = new PathConstraintPositionTimeline(frames, frames, constraintIndex);
+						timelines.push(readTimeline1(timelineMap, timeline, 0, constraint.positionMode == PositionMode.Fixed ? scale : 1));
+					} else if (timelineName === "spacing") {
+						let timeline = new PathConstraintSpacingTimeline(frames, frames, constraintIndex);
+						timelines.push(readTimeline1(timelineMap, timeline, 0, constraint.spacingMode == SpacingMode.Length || constraint.spacingMode == SpacingMode.Fixed ? scale : 1));
 					} else if (timelineName === "mix") {
-						let timeline = new PathConstraintMixTimeline(timelineMap.length);
-						timeline.pathConstraintIndex = index;
-						let frameIndex = 0;
-						for (let i = 0; i < timelineMap.length; i++) {
-							let valueMap = timelineMap[i];
-							timeline.setFrame(frameIndex, this.getValue(valueMap, "time", 0), this.getValue(valueMap, "rotateMix", 1),
-								this.getValue(valueMap, "translateMix", 1));
-							this.readCurve(valueMap, timeline, frameIndex);
-							frameIndex++;
-						}
-						timelines.push(timeline);
-						duration = Math.max(duration,
-							timeline.frames[(timeline.getFrameCount() - 1) * PathConstraintMixTimeline.ENTRIES]);
-					}
-				}
-			}
-		}
-
-		// Deform timelines.
-		if (map.deform) {
-			for (let deformName in map.deform) {
-				let deformMap = map.deform[deformName];
-				let skin = skeletonData.findSkin(deformName);
-				if (skin == null) throw new Error("Skin not found: " + deformName);
-				for (let slotName in deformMap) {
-					let slotMap = deformMap[slotName];
-					let slotIndex = skeletonData.findSlotIndex(slotName);
-					if (slotIndex == -1) throw new Error("Slot not found: " + slotMap.name);
-					for (let timelineName in slotMap) {
-						let timelineMap = slotMap[timelineName];
-						let attachment = <VertexAttachment>skin.getAttachment(slotIndex, timelineName);
-						if (attachment == null) throw new Error("Deform attachment not found: " + timelineMap.name);
-						let weighted = attachment.bones != null;
-						let vertices = attachment.vertices;
-						let deformLength = weighted ? vertices.length / 3 * 2 : vertices.length;
-
-						let timeline = new DeformTimeline(timelineMap.length);
-						timeline.slotIndex = slotIndex;
-						timeline.attachment = attachment;
-
-						let frameIndex = 0;
-						for (let j = 0; j < timelineMap.length; j++) {
-							let valueMap = timelineMap[j];
-							let deform: ArrayLike<number>;
-							let verticesValue: Array<Number> = this.getValue(valueMap, "vertices", null);
-							if (verticesValue == null)
-								deform = weighted ? Utils.newFloatArray(deformLength) : vertices;
-							else {
-								deform = Utils.newFloatArray(deformLength);
-								let start = <number>this.getValue(valueMap, "offset", 0);
-								Utils.arrayCopy(verticesValue, 0, deform, start, verticesValue.length);
-								if (scale != 1) {
-									for (let i = start, n = i + verticesValue.length; i < n; i++)
-										deform[i] *= scale;
-								}
-								if (!weighted) {
-									for (let i = 0; i < deformLength; i++)
-										deform[i] += vertices[i];
-								}
+						let timeline = new PathConstraintMixTimeline(frames, frames * 3, constraintIndex);
+						let time = getValue(keyMap, "time", 0);
+						let mixRotate = getValue(keyMap, "mixRotate", 1);
+						let mixX = getValue(keyMap, "mixX", 1);
+						let mixY = getValue(keyMap, "mixY", mixX);
+						for (let frame = 0, bezier = 0; ; frame++) {
+							timeline.setFrame(frame, time, mixRotate, mixX, mixY);
+							let nextMap = timelineMap[frame + 1];
+							if (!nextMap) {
+								timeline.shrink(bezier);
+								break;
 							}
-
-							timeline.setFrame(frameIndex, this.getValue(valueMap, "time", 0), deform);
-							this.readCurve(valueMap, timeline, frameIndex);
-							frameIndex++;
+							let time2 = getValue(nextMap, "time", 0);
+							let mixRotate2 = getValue(nextMap, "mixRotate", 1);
+							let mixX2 = getValue(nextMap, "mixX", 1);
+							let mixY2 = getValue(nextMap, "mixY", mixX2);
+							let curve = keyMap.curve;
+							if (curve) {
+								bezier = readCurve(curve, timeline, bezier, frame, 0, time, time2, mixRotate, mixRotate2, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 1, time, time2, mixX, mixX2, 1);
+								bezier = readCurve(curve, timeline, bezier, frame, 2, time, time2, mixY, mixY2, 1);
+							}
+							time = time2;
+							mixRotate = mixRotate2;
+							mixX = mixX2;
+							mixY = mixY2;
+							keyMap = nextMap;
 						}
 						timelines.push(timeline);
-						duration = Math.max(duration, timeline.frames[timeline.getFrameCount() - 1]);
 					}
 				}
 			}
 		}
 
-		// Draw order timeline.
-		let drawOrderNode = map.drawOrder;
-		if (drawOrderNode == null) drawOrderNode = map.draworder;
-		if (drawOrderNode != null) {
-			let timeline = new DrawOrderTimeline(drawOrderNode.length);
+		// Physics constraint timelines.
+		if (map.physics) {
+			for (let constraintName in map.physics) {
+				let constraintMap = map.physics[constraintName];
+				let constraintIndex = -1;
+				if (constraintName.length > 0) {
+					let constraint = skeletonData.findPhysicsConstraint(constraintName);
+					if (!constraint) throw new Error("Physics constraint not found: " + constraintName);
+					constraintIndex = skeletonData.physicsConstraints.indexOf(constraint);
+				}
+				for (let timelineName in constraintMap) {
+					let timelineMap = constraintMap[timelineName];
+					let keyMap = timelineMap[0];
+					if (!keyMap) continue;
+
+					let frames = timelineMap.length;
+					if (timelineName == "reset") {
+						const timeline = new PhysicsConstraintResetTimeline(frames, constraintIndex);
+						for (let frame = 0; keyMap != null; keyMap = timelineMap[frame + 1], frame++)
+							timeline.setFrame(frame, getValue(keyMap, "time", 0));
+						timelines.push(timeline);
+						continue;
+					}
+
+					let timeline;
+					if (timelineName == "inertia")
+						timeline = new PhysicsConstraintInertiaTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "strength")
+						timeline = new PhysicsConstraintStrengthTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "damping")
+						timeline = new PhysicsConstraintDampingTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "mass")
+						timeline = new PhysicsConstraintMassTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "wind")
+						timeline = new PhysicsConstraintWindTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "gravity")
+						timeline = new PhysicsConstraintGravityTimeline(frames, frames, constraintIndex);
+					else if (timelineName == "mix") //
+						timeline = new PhysicsConstraintMixTimeline(frames, frames, constraintIndex);
+					else
+						continue;
+					timelines.push(readTimeline1(timelineMap, timeline, 0, 1));
+				}
+			}
+		}
+
+		// Attachment timelines.
+		if (map.attachments) {
+			for (let attachmentsName in map.attachments) {
+				let attachmentsMap = map.attachments[attachmentsName];
+				let skin = skeletonData.findSkin(attachmentsName);
+				if (!skin) throw new Error("Skin not found: " + attachmentsName);
+				for (let slotMapName in attachmentsMap) {
+					let slotMap = attachmentsMap[slotMapName];
+					let slot = skeletonData.findSlot(slotMapName);
+					if (!slot) throw new Error("Slot not found: " + slotMapName);
+					let slotIndex = slot.index;
+					for (let attachmentMapName in slotMap) {
+						let attachmentMap = slotMap[attachmentMapName];
+						let attachment = <VertexAttachment>skin.getAttachment(slotIndex, attachmentMapName);
+
+						for (let timelineMapName in attachmentMap) {
+							let timelineMap = attachmentMap[timelineMapName];
+							let keyMap = timelineMap[0];
+							if (!keyMap) continue;
+
+							if (timelineMapName == "deform") {
+								let weighted = attachment.bones;
+								let vertices = attachment.vertices;
+								let deformLength = weighted ? vertices.length / 3 * 2 : vertices.length;
+
+								let timeline = new DeformTimeline(timelineMap.length, timelineMap.length, slotIndex, attachment);
+								let time = getValue(keyMap, "time", 0);
+								for (let frame = 0, bezier = 0; ; frame++) {
+									let deform: NumberArrayLike;
+									let verticesValue: Array<Number> = getValue(keyMap, "vertices", null);
+									if (!verticesValue)
+										deform = weighted ? Utils.newFloatArray(deformLength) : vertices;
+									else {
+										deform = Utils.newFloatArray(deformLength);
+										let start = <number>getValue(keyMap, "offset", 0);
+										Utils.arrayCopy(verticesValue, 0, deform, start, verticesValue.length);
+										if (scale != 1) {
+											for (let i = start, n = i + verticesValue.length; i < n; i++)
+												deform[i] *= scale;
+										}
+										if (!weighted) {
+											for (let i = 0; i < deformLength; i++)
+												deform[i] += vertices[i];
+										}
+									}
+
+									timeline.setFrame(frame, time, deform);
+									let nextMap = timelineMap[frame + 1];
+									if (!nextMap) {
+										timeline.shrink(bezier);
+										break;
+									}
+									let time2 = getValue(nextMap, "time", 0);
+									let curve = keyMap.curve;
+									if (curve) bezier = readCurve(curve, timeline, bezier, frame, 0, time, time2, 0, 1, 1);
+									time = time2;
+									keyMap = nextMap;
+								}
+								timelines.push(timeline);
+							} else if (timelineMapName == "sequence") {
+								let timeline = new SequenceTimeline(timelineMap.length, slotIndex, attachment as unknown as HasTextureRegion);
+								let lastDelay = 0;
+								for (let frame = 0; frame < timelineMap.length; frame++) {
+									let delay = getValue(keyMap, "delay", lastDelay);
+									let time = getValue(keyMap, "time", 0);
+									let mode = SequenceMode[getValue(keyMap, "mode", "hold")] as unknown as number;
+									let index = getValue(keyMap, "index", 0);
+									timeline.setFrame(frame, time, mode, index, delay);
+									lastDelay = delay;
+									keyMap = timelineMap[frame + 1];
+								}
+								timelines.push(timeline);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// Draw order timelines.
+		if (map.drawOrder) {
+			let timeline = new DrawOrderTimeline(map.drawOrder.length);
 			let slotCount = skeletonData.slots.length;
-			let frameIndex = 0;
-			for (let j = 0; j < drawOrderNode.length; j++) {
-				let drawOrderMap = drawOrderNode[j];
-				let drawOrder: Array<number> = null;
-				let offsets = this.getValue(drawOrderMap, "offsets", null);
-				if (offsets != null) {
+			let frame = 0;
+			for (let i = 0; i < map.drawOrder.length; i++, frame++) {
+				let drawOrderMap = map.drawOrder[i];
+				let drawOrder: Array<number> | null = null;
+				let offsets = getValue(drawOrderMap, "offsets", null);
+				if (offsets) {
 					drawOrder = Utils.newArray<number>(slotCount, -1);
 					let unchanged = Utils.newArray<number>(slotCount - offsets.length, 0);
 					let originalIndex = 0, unchangedIndex = 0;
-					for (let i = 0; i < offsets.length; i++) {
-						let offsetMap = offsets[i];
-						let slotIndex = skeletonData.findSlotIndex(offsetMap.slot);
-						if (slotIndex == -1) throw new Error("Slot not found: " + offsetMap.slot);
+					for (let ii = 0; ii < offsets.length; ii++) {
+						let offsetMap = offsets[ii];
+						let slot = skeletonData.findSlot(offsetMap.slot);
+						if (!slot) throw new Error("Slot not found: " + slot);
+						let slotIndex = slot.index;
 						// Collect unchanged items.
 						while (originalIndex != slotIndex)
 							unchanged[unchangedIndex++] = originalIndex++;
@@ -733,98 +1052,39 @@ export class SkeletonJson {
 					while (originalIndex < slotCount)
 						unchanged[unchangedIndex++] = originalIndex++;
 					// Fill in unchanged items.
-					for (let i = slotCount - 1; i >= 0; i--)
-						if (drawOrder[i] == -1) drawOrder[i] = unchanged[--unchangedIndex];
+					for (let ii = slotCount - 1; ii >= 0; ii--)
+						if (drawOrder[ii] == -1) drawOrder[ii] = unchanged[--unchangedIndex];
 				}
-				timeline.setFrame(frameIndex++, this.getValue(drawOrderMap, "time", 0), drawOrder);
+				timeline.setFrame(frame, getValue(drawOrderMap, "time", 0), drawOrder);
 			}
 			timelines.push(timeline);
-			duration = Math.max(duration, timeline.frames[timeline.getFrameCount() - 1]);
 		}
 
-		// Event timeline.
+		// Event timelines.
 		if (map.events) {
 			let timeline = new EventTimeline(map.events.length);
-			let frameIndex = 0;
-			for (let i = 0; i < map.events.length; i++) {
+			let frame = 0;
+			for (let i = 0; i < map.events.length; i++, frame++) {
 				let eventMap = map.events[i];
 				let eventData = skeletonData.findEvent(eventMap.name);
-				if (eventData == null) throw new Error("Event not found: " + eventMap.name);
-				let event = new Event(Utils.toSinglePrecision(this.getValue(eventMap, "time", 0)), eventData);
-				event.intValue = this.getValue(eventMap, "int", eventData.intValue);
-				event.floatValue = this.getValue(eventMap, "float", eventData.floatValue);
-				event.stringValue = this.getValue(eventMap, "string", eventData.stringValue);
-				if (event.data.audioPath != null) {
-					event.volume = this.getValue(eventMap, "volume", 1);
-					event.balance = this.getValue(eventMap, "balance", 0);
+				if (!eventData) throw new Error("Event not found: " + eventMap.name);
+				let event = new Event(Utils.toSinglePrecision(getValue(eventMap, "time", 0)), eventData);
+				event.intValue = getValue(eventMap, "int", eventData.intValue);
+				event.floatValue = getValue(eventMap, "float", eventData.floatValue);
+				event.stringValue = getValue(eventMap, "string", eventData.stringValue);
+				if (event.data.audioPath) {
+					event.volume = getValue(eventMap, "volume", 1);
+					event.balance = getValue(eventMap, "balance", 0);
 				}
-				timeline.setFrame(frameIndex++, event);
+				timeline.setFrame(frame, event);
 			}
 			timelines.push(timeline);
-			duration = Math.max(duration, timeline.frames[timeline.getFrameCount() - 1]);
 		}
 
-		if (isNaN(duration)) {
-			throw new Error("Error while parsing animation, duration is NaN");
-		}
-
+		let duration = 0;
+		for (let i = 0, n = timelines.length; i < n; i++)
+			duration = Math.max(duration, timelines[i].getDuration());
 		skeletonData.animations.push(new Animation(name, timelines, duration));
-	}
-
-	readCurve (map: any, timeline: CurveTimeline, frameIndex: number) {
-		if (!map.hasOwnProperty("curve")) return;
-		if (map.curve == "stepped")
-			timeline.setStepped(frameIndex);
-		else {
-			let curve: number = map.curve;
-			timeline.setCurve(frameIndex, curve, this.getValue(map, "c2", 0), this.getValue(map, "c3", 1), this.getValue(map, "c4", 1));
-		}
-	}
-
-	getValue (map: any, prop: string, defaultValue: any) {
-		return map[prop] !== undefined ? map[prop] : defaultValue;
-	}
-
-	static blendModeFromString (str: string) {
-		str = str.toLowerCase();
-		if (str == "normal") return BlendMode.Normal;
-		if (str == "additive") return BlendMode.Additive;
-		if (str == "multiply") return BlendMode.Multiply;
-		if (str == "screen") return BlendMode.Screen;
-		throw new Error(`Unknown blend mode: ${str}`);
-	}
-
-	static positionModeFromString (str: string) {
-		str = str.toLowerCase();
-		if (str == "fixed") return PositionMode.Fixed;
-		if (str == "percent") return PositionMode.Percent;
-		throw new Error(`Unknown position mode: ${str}`);
-	}
-
-	static spacingModeFromString (str: string) {
-		str = str.toLowerCase();
-		if (str == "length") return SpacingMode.Length;
-		if (str == "fixed") return SpacingMode.Fixed;
-		if (str == "percent") return SpacingMode.Percent;
-		throw new Error(`Unknown position mode: ${str}`);
-	}
-
-	static rotateModeFromString (str: string) {
-		str = str.toLowerCase();
-		if (str == "tangent") return RotateMode.Tangent;
-		if (str == "chain") return RotateMode.Chain;
-		if (str == "chainscale") return RotateMode.ChainScale;
-		throw new Error(`Unknown rotate mode: ${str}`);
-	}
-
-	static transformModeFromString(str: string) {
-		str = str.toLowerCase();
-		if (str == "normal") return TransformMode.Normal;
-		if (str == "onlytranslation") return TransformMode.OnlyTranslation;
-		if (str == "norotationorreflection") return TransformMode.NoRotationOrReflection;
-		if (str == "noscale") return TransformMode.NoScale;
-		if (str == "noscaleorreflection") return TransformMode.NoScaleOrReflection;
-		throw new Error(`Unknown transform mode: ${str}`);
 	}
 }
 
@@ -832,13 +1092,81 @@ class LinkedMesh {
 	parent: string; skin: string;
 	slotIndex: number;
 	mesh: MeshAttachment;
-	inheritDeform: boolean;
+	inheritTimeline: boolean;
 
 	constructor (mesh: MeshAttachment, skin: string, slotIndex: number, parent: string, inheritDeform: boolean) {
 		this.mesh = mesh;
 		this.skin = skin;
 		this.slotIndex = slotIndex;
 		this.parent = parent;
-		this.inheritDeform = inheritDeform;
+		this.inheritTimeline = inheritDeform;
 	}
+}
+
+function readTimeline1 (keys: any[], timeline: CurveTimeline1, defaultValue: number, scale: number) {
+	let keyMap = keys[0];
+	let time = getValue(keyMap, "time", 0);
+	let value = getValue(keyMap, "value", defaultValue) * scale;
+	let bezier = 0;
+	for (let frame = 0; ; frame++) {
+		timeline.setFrame(frame, time, value);
+		let nextMap = keys[frame + 1];
+		if (!nextMap) {
+			timeline.shrink(bezier);
+			return timeline;
+		}
+		let time2 = getValue(nextMap, "time", 0);
+		let value2 = getValue(nextMap, "value", defaultValue) * scale;
+		if (keyMap.curve) bezier = readCurve(keyMap.curve, timeline, bezier, frame, 0, time, time2, value, value2, scale);
+		time = time2;
+		value = value2;
+		keyMap = nextMap;
+	}
+}
+
+function readTimeline2 (keys: any[], timeline: CurveTimeline2, name1: string, name2: string, defaultValue: number, scale: number) {
+	let keyMap = keys[0];
+	let time = getValue(keyMap, "time", 0);
+	let value1 = getValue(keyMap, name1, defaultValue) * scale;
+	let value2 = getValue(keyMap, name2, defaultValue) * scale;
+	let bezier = 0;
+	for (let frame = 0; ; frame++) {
+		timeline.setFrame(frame, time, value1, value2);
+		let nextMap = keys[frame + 1];
+		if (!nextMap) {
+			timeline.shrink(bezier);
+			return timeline;
+		}
+		let time2 = getValue(nextMap, "time", 0);
+		let nvalue1 = getValue(nextMap, name1, defaultValue) * scale;
+		let nvalue2 = getValue(nextMap, name2, defaultValue) * scale;
+		let curve = keyMap.curve;
+		if (curve) {
+			bezier = readCurve(curve, timeline, bezier, frame, 0, time, time2, value1, nvalue1, scale);
+			bezier = readCurve(curve, timeline, bezier, frame, 1, time, time2, value2, nvalue2, scale);
+		}
+		time = time2;
+		value1 = nvalue1;
+		value2 = nvalue2;
+		keyMap = nextMap;
+	}
+}
+
+function readCurve (curve: any, timeline: CurveTimeline, bezier: number, frame: number, value: number, time1: number, time2: number,
+	value1: number, value2: number, scale: number) {
+	if (curve == "stepped") {
+		timeline.setStepped(frame);
+		return bezier;
+	}
+	let i = value << 2;
+	let cx1 = curve[i];
+	let cy1 = curve[i + 1] * scale;
+	let cx2 = curve[i + 2];
+	let cy2 = curve[i + 3] * scale;
+	timeline.setBezier(bezier, frame, value, time1, value1, cx1, cy1, cx2, cy2, time2, value2);
+	return bezier + 1;
+}
+
+function getValue (map: any, property: string, defaultValue: any) {
+	return map[property] !== undefined ? map[property] : defaultValue;
 }

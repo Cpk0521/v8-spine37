@@ -1,3 +1,32 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
 import { Bone } from "../Bone";
 import { Color, Vector2, MathUtils } from "../Utils";
 import { VertexAttachment, Attachment } from "./Attachment";
@@ -8,7 +37,9 @@ import { VertexAttachment, Attachment } from "./Attachment";
  *
  * See [Point Attachments](http://esotericsoftware.com/spine-point-attachments) in the Spine User Guide. */
 export class PointAttachment extends VertexAttachment {
-	x: number; y: number; rotation: number;
+	x: number = 0;
+	y: number = 0;
+	rotation: number = 0;
 
 	/** The color of the point attachment as it was in Spine. Available only when nonessential data was exported. Point attachments
 	 * are not usually rendered at runtime. */
@@ -25,10 +56,10 @@ export class PointAttachment extends VertexAttachment {
 	}
 
 	computeWorldRotation (bone: Bone) {
-		let cos = MathUtils.cosDeg(this.rotation), sin = MathUtils.sinDeg(this.rotation);
-		let x = cos * bone.a + sin * bone.b;
-		let y = cos * bone.c + sin * bone.d;
-		return Math.atan2(y, x) * MathUtils.radDeg;
+		const r = this.rotation * MathUtils.degRad, cos = Math.cos(r), sin = Math.sin(r);
+		const x = cos * bone.a + sin * bone.b;
+		const y = cos * bone.c + sin * bone.d;
+		return MathUtils.atan2Deg(y, x);		
 	}
 
 	copy (): Attachment {

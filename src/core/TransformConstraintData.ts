@@ -1,3 +1,32 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
 import { ConstraintData } from "./ConstraintData";
 import { BoneData } from "./BoneData";
 
@@ -10,19 +39,19 @@ export class TransformConstraintData extends ConstraintData {
 	bones = new Array<BoneData>();
 
 	/** The target bone whose world transform will be copied to the constrained bones. */
-	target: BoneData;
+	private _target: BoneData | null = null;
+	public set target (boneData: BoneData) { this._target = boneData; }
+	public get target () {
+		if (!this._target) throw new Error("BoneData not set.")
+		else return this._target;
+	}
 
-	/** A percentage (0-1) that controls the mix between the constrained and unconstrained rotations. */
-	rotateMix = 0;
-
-	/** A percentage (0-1) that controls the mix between the constrained and unconstrained translations. */
-	translateMix = 0;
-
-	/** A percentage (0-1) that controls the mix between the constrained and unconstrained scales. */
-	scaleMix = 0;
-
-	/** A percentage (0-1) that controls the mix between the constrained and unconstrained shears. */
-	shearMix = 0;
+	mixRotate = 0;
+	mixX = 0;
+	mixY = 0;
+	mixScaleX = 0;
+	mixScaleY = 0;
+	mixShearY = 0;
 
 	/** An offset added to the constrained bone rotation. */
 	offsetRotation = 0;

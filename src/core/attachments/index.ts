@@ -1,6 +1,5 @@
 export * from './Attachment';
 export * from './AttachmentLoader';
-export * from './AttachmentType';
 export * from './BoundingBoxAttachment';
 export * from './ClippingAttachment';
 export * from './MeshAttachment';

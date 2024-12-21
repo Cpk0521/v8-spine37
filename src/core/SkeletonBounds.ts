@@ -1,6 +1,35 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
 import { BoundingBoxAttachment } from "./attachments/BoundingBoxAttachment";
 import { Skeleton } from "./Skeleton";
-import { ArrayLike, Pool, Utils } from "./Utils";
+import { NumberArrayLike, Pool, Utils } from "./Utils";
 
 /** Collects each visible {@link BoundingBoxAttachment} and computes the world vertices for its polygon. The polygon vertices are
  * provided along with convenience methods for doing hit detection. */
@@ -22,9 +51,9 @@ export class SkeletonBounds {
 	boundingBoxes = new Array<BoundingBoxAttachment>();
 
 	/** The world vertices for the bounding box polygons. */
-	polygons = new Array<ArrayLike<number>>();
+	polygons = new Array<NumberArrayLike>();
 
-	private polygonPool = new Pool<ArrayLike<number>>(() => {
+	private polygonPool = new Pool<NumberArrayLike>(() => {
 		return Utils.newFloatArray(16);
 	});
 
@@ -33,7 +62,7 @@ export class SkeletonBounds {
 	 * @param updateAabb If true, the axis aligned bounding box containing all the polygons is computed. If false, the
 	 *           SkeletonBounds AABB methods will always return true. */
 	update (skeleton: Skeleton, updateAabb: boolean) {
-		if (skeleton == null) throw new Error("skeleton cannot be null.");
+		if (!skeleton) throw new Error("skeleton cannot be null.");
 		let boundingBoxes = this.boundingBoxes;
 		let polygons = this.polygons;
 		let polygonPool = this.polygonPool;
@@ -124,7 +153,7 @@ export class SkeletonBounds {
 
 	/** Returns the first bounding box attachment that contains the point, or null. When doing many checks, it is usually more
 	 * efficient to only call this method if {@link #aabbContainsPoint(float, float)} returns true. */
-	containsPoint (x: number, y: number): BoundingBoxAttachment {
+	containsPoint (x: number, y: number): BoundingBoxAttachment | null {
 		let polygons = this.polygons;
 		for (let i = 0, n = polygons.length; i < n; i++)
 			if (this.containsPointPolygon(polygons[i], x, y)) return this.boundingBoxes[i];
@@ -132,7 +161,7 @@ export class SkeletonBounds {
 	}
 
 	/** Returns true if the polygon contains the point. */
-	containsPointPolygon (polygon: ArrayLike<number>, x: number, y: number) {
+	containsPointPolygon (polygon: NumberArrayLike, x: number, y: number) {
 		let vertices = polygon;
 		let nn = polygon.length;
 
@@ -161,7 +190,7 @@ export class SkeletonBounds {
 	}
 
 	/** Returns true if the polygon contains any part of the line segment. */
-	intersectsSegmentPolygon (polygon: ArrayLike<number>, x1: number, y1: number, x2: number, y2: number) {
+	intersectsSegmentPolygon (polygon: NumberArrayLike, x1: number, y1: number, x2: number, y2: number) {
 		let vertices = polygon;
 		let nn = polygon.length;
 
@@ -186,7 +215,7 @@ export class SkeletonBounds {
 
 	/** Returns the polygon for the specified bounding box, or null. */
 	getPolygon (boundingBox: BoundingBoxAttachment) {
-		if (boundingBox == null) throw new Error("boundingBox cannot be null.");
+		if (!boundingBox) throw new Error("boundingBox cannot be null.");
 		let index = this.boundingBoxes.indexOf(boundingBox);
 		return index == -1 ? null : this.polygons[index];
 	}

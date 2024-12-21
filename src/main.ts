@@ -1,9 +1,8 @@
 import { Application, Assets } from "pixi.js";
-import './loader/atlasLoader'
-import './loader/skeletonLoader'
-import { Spine } from "./Spine";
-import "./SpinePipe";
-
+import './v8/assets/atlasLoader';
+import './v8/assets/skeletonLoader'
+import { Spine } from "./v8/Spine";
+import './v8/SpinePipe'
 
 (async ()=>{
 
@@ -19,14 +18,43 @@ import "./SpinePipe";
     globalThis.__PIXI_APP__ = app;
 
     document.body.appendChild(app.canvas);
+
+    // WDS
+    // await Assets.load([
+    //     {alias: 'modelskel', src: 'https://raw.githubusercontent.com/nan0521/WDS-Adv-Resource/main/spine/10201.skel'},
+    //     {alias: 'modelatlas', src: 'https://raw.githubusercontent.com/nan0521/WDS-Adv-Resource/main/spine/10201.atlas'}
+    // ])
+
+    // SC
+    // await Assets.load([
+    //     {alias: 'modelskel', src: 'data.json'},
+    //     {alias: 'modelatlas', src: 'data.atlas'}
+    // ])
+
+
+    // CUE
+    // await Assets.load([
+    //     {alias: 'modelskel', src: './root.skel'},
+    //     {alias: 'modelatlas', src: './root.atlas'}
+    // ])
     
-    const spineAsset = await Assets.load('./root.json');
-    // console.log(spineAsset)
+    // SPIME simple
+    await Assets.load([
+        {alias: 'modelskel', src: './spineboy-pro.json'},
+        {alias: 'modelatlas', src: './spineboy-pma.atlas'}
+    ])
 
-    const spine = new Spine(spineAsset.spineData);
-    console.log(spine)
+    const model = Spine.from({
+        skeleton : 'modelskel',
+        atlas : 'modelatlas',
+        scale : 0.5
+    })
 
-    // app.stage.addChild(spine);
+
+    model.x = 500;
+    model.y = 500;
+
+    app.stage.addChild(model);
 
 
 })();

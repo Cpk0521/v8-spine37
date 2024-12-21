@@ -1,4 +1,33 @@
-import { ArrayLike, Pool } from "./Utils.js";
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
+import { NumberArrayLike, Pool } from "./Utils";
 
 export class Triangulator {
 	private convexPolygons = new Array<Array<number>>();
@@ -16,7 +45,7 @@ export class Triangulator {
 		return new Array<number>();
 	});
 
-	public triangulate (verticesArray: ArrayLike<number>): Array<number> {
+	public triangulate (verticesArray: NumberArrayLike): Array<number> {
 		let vertices = verticesArray;
 		let vertexCount = verticesArray.length >> 1;
 
@@ -92,7 +121,7 @@ export class Triangulator {
 		return triangles;
 	}
 
-	decompose (verticesArray: Array<number>, triangles: Array<number>) : Array<Array<number>> {
+	decompose (verticesArray: Array<number>, triangles: Array<number>): Array<Array<number>> {
 		let vertices = verticesArray;
 		let convexPolygons = this.convexPolygons;
 		this.polygonPool.freeAll(convexPolygons);
@@ -221,7 +250,7 @@ export class Triangulator {
 		return convexPolygons;
 	}
 
-	private static isConcave (index: number, vertexCount: number, vertices: ArrayLike<number>, indices: ArrayLike<number>): boolean {
+	private static isConcave (index: number, vertexCount: number, vertices: NumberArrayLike, indices: NumberArrayLike): boolean {
 		let previous = indices[(vertexCount + index - 1) % vertexCount] << 1;
 		let current = indices[index] << 1;
 		let next = indices[(index + 1) % vertexCount] << 1;

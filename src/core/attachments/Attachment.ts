@@ -1,12 +1,41 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
 import { Slot } from "../Slot";
-import { ArrayLike, Utils } from "../Utils";
+import { NumberArrayLike, Utils } from "../Utils";
 
 /** The base class for all attachments. */
 export abstract class Attachment {
 	name: string;
 
 	constructor (name: string) {
-		if (name == null) throw new Error("name cannot be null.");
+		if (!name) throw new Error("name cannot be null.");
 		this.name = name;
 	}
 
@@ -19,30 +48,31 @@ export abstract class VertexAttachment extends Attachment {
 	private static nextID = 0;
 
 	/** The unique ID for this attachment. */
-	id = (VertexAttachment.nextID++ & 65535) << 11;
+	id = VertexAttachment.nextID++;
 
 	/** The bones which affect the {@link #getVertices()}. The array entries are, for each vertex, the number of bones affecting
 	 * the vertex followed by that many bone indices, which is the index of the bone in {@link Skeleton#bones}. Will be null
 	 * if this attachment has no weights. */
-	bones: Array<number>;
+	bones: Array<number> | null = null;
 
 	/** The vertex positions in the bone's coordinate system. For a non-weighted attachment, the values are `x,y`
 	 * entries for each vertex. For a weighted attachment, the values are `x,y,weight` entries for each bone affecting
 	 * each vertex. */
-	vertices: ArrayLike<number>;
+	vertices: NumberArrayLike = [];
 
 	/** The maximum number of world vertex values that can be output by
 	 * {@link #computeWorldVertices()} using the `count` parameter. */
 	worldVerticesLength = 0;
 
-	/** Deform keys for the deform attachment are also applied to this attachment. May be null if no deform keys should be applied. */
-	deformAttachment: VertexAttachment = this;
+	/** Timelines for the timeline attachment are also applied to this attachment.
+	 * May be null if no attachment-specific timelines should be applied. */
+	timelineAttachment: Attachment = this;
 
 	constructor (name: string) {
 		super(name);
 	}
 
-	/** Transforms the attachment's local {@link vertices} to world coordinates. If the slot's {@link Slot#deform} is
+	/** Transforms the attachment's local {@link #vertices} to world coordinates. If the slot's {@link Slot#deform} is
 	 * not empty, it is used to deform the vertices.
 	 *
 	 * See [World transforms](http://esotericsoftware.com/spine-runtime-skeletons#World-transforms) in the Spine
@@ -53,13 +83,13 @@ export abstract class VertexAttachment extends Attachment {
 	 *           `stride` / 2.
 	 * @param offset The `worldVertices` index to begin writing values.
 	 * @param stride The number of `worldVertices` entries between the value pairs written. */
-	computeWorldVertices (slot: Slot, start: number, count: number, worldVertices: ArrayLike<number>, offset: number, stride: number) {
+	computeWorldVertices (slot: Slot, start: number, count: number, worldVertices: NumberArrayLike, offset: number, stride: number) {
 		count = offset + (count >> 1) * stride;
 		let skeleton = slot.bone.skeleton;
 		let deformArray = slot.deform;
 		let vertices = this.vertices;
 		let bones = this.bones;
-		if (bones == null) {
+		if (!bones) {
 			if (deformArray.length > 0) vertices = deformArray;
 			let bone = slot.bone;
 			let x = bone.worldX;
@@ -113,19 +143,18 @@ export abstract class VertexAttachment extends Attachment {
 
 	/** Does not copy id (generated) or name (set on construction). **/
 	copyTo (attachment: VertexAttachment) {
-		if (this.bones != null) {
+		if (this.bones) {
 			attachment.bones = new Array<number>(this.bones.length);
 			Utils.arrayCopy(this.bones, 0, attachment.bones, 0, this.bones.length);
 		} else
 			attachment.bones = null;
 
-		if (this.vertices != null) {
+		if (this.vertices) {
 			attachment.vertices = Utils.newFloatArray(this.vertices.length);
 			Utils.arrayCopy(this.vertices, 0, attachment.vertices, 0, this.vertices.length);
-		} else
-			attachment.vertices = null;
+		}
 
 		attachment.worldVerticesLength = this.worldVerticesLength;
-		attachment.deformAttachment = this.deformAttachment;
+		attachment.timelineAttachment = this.timelineAttachment;
 	}
 }

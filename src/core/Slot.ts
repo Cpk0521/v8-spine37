@@ -1,3 +1,32 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+
 import { Attachment, VertexAttachment } from "./attachments/Attachment";
 import { Bone } from "./Bone";
 import { Skeleton } from "./Skeleton";
@@ -20,13 +49,15 @@ export class Slot {
 
 	/** The dark color used to tint the slot's attachment for two color tinting, or null if two color tinting is not used. The dark
 	 * color's alpha is not used. */
-	darkColor: Color;
+	darkColor: Color | null = null;
 
-	attachment: Attachment;
+	attachment: Attachment | null = null;
 
-	private attachmentTime: number;
+	attachmentState: number = 0;
 
-	attachmentState: number;
+	/** The index of the texture region to display when the slot's attachment has a {@link Sequence}. -1 represents the
+	 * {@link Sequence#getSetupIndex()}. */
+	sequenceIndex: number = -1;
 
 	/** Values to deform the slot's attachment. For an unweighted mesh, the entries are local positions for each vertex. For a
 	 * weighted mesh, the entries are an offset for each vertex which will be added to the mesh's local vertex positions.
@@ -35,12 +66,12 @@ export class Slot {
 	deform = new Array<number>();
 
 	constructor (data: SlotData, bone: Bone) {
-		if (data == null) throw new Error("data cannot be null.");
-		if (bone == null) throw new Error("bone cannot be null.");
+		if (!data) throw new Error("data cannot be null.");
+		if (!bone) throw new Error("bone cannot be null.");
 		this.data = data;
 		this.bone = bone;
 		this.color = new Color();
-		this.darkColor = data.darkColor == null ? null : new Color();
+		this.darkColor = !data.darkColor ? null : new Color();
 		this.setToSetupPose();
 	}
 
@@ -50,34 +81,28 @@ export class Slot {
 	}
 
 	/** The current attachment for the slot, or null if the slot has no attachment. */
-	getAttachment (): Attachment {
+	getAttachment (): Attachment | null {
 		return this.attachment;
 	}
 
-	/** Sets the slot's attachment and, if the attachment changed, resets {@link #attachmentTime} and clears {@link #deform}.
-	 * @param attachment May be null. */
-	setAttachment (attachment: Attachment) {
+	/** Sets the slot's attachment and, if the attachment changed, resets {@link #sequenceIndex} and clears the {@link #deform}.
+	 * The deform is not cleared if the old attachment has the same {@link VertexAttachment#getTimelineAttachment()} as the
+	 * specified attachment. */
+	setAttachment (attachment: Attachment | null) {
 		if (this.attachment == attachment) return;
+		if (!(attachment instanceof VertexAttachment) || !(this.attachment instanceof VertexAttachment)
+			|| (<VertexAttachment>attachment).timelineAttachment != (<VertexAttachment>this.attachment).timelineAttachment) {
+			this.deform.length = 0;
+		}
 		this.attachment = attachment;
-		this.attachmentTime = this.bone.skeleton.time;
-		this.deform.length = 0;
-	}
-
-	setAttachmentTime (time: number) {
-		this.attachmentTime = this.bone.skeleton.time - time;
-	}
-
-	/** The time that has elapsed since the last time the attachment was set or cleared. Relies on Skeleton
-	 * {@link Skeleton#time}. */
-	getAttachmentTime (): number {
-		return this.bone.skeleton.time - this.attachmentTime;
+		this.sequenceIndex = -1;
 	}
 
 	/** Sets this slot to the setup pose. */
 	setToSetupPose () {
 		this.color.setFromColor(this.data.color);
-		if (this.darkColor != null) this.darkColor.setFromColor(this.data.darkColor);
-		if (this.data.attachmentName == null)
+		if (this.darkColor) this.darkColor.setFromColor(this.data.darkColor!);
+		if (!this.data.attachmentName)
 			this.attachment = null;
 		else {
 			this.attachment = null;
@@ -85,4 +110,3 @@ export class Slot {
 		}
 	}
 }
-

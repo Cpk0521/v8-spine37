@@ -1,6 +1,75 @@
-import { Assets, Bounds, BoundsData, Cache, Container, ContainerOptions, DEG_TO_RAD, DestroyOptions, PointData, Texture, Ticker, ViewContainer, Graphics, fastCopy } from "pixi.js";
-import { AnimationState, AnimationStateData, AtlasAttachmentLoader, Attachment, AttachmentType, Bone, ClippingAttachment, Color, MeshAttachment, Pool, RegionAttachment, Skeleton, SkeletonBinary, SkeletonBounds, SkeletonClipping, SkeletonData, SkeletonJson, Slot, type TextureAtlas, TrackEntry, Vector2, } from "./core";
+/** ****************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated July 28, 2023. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2023, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software or
+ * otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE
+ * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
 
+import {
+	Assets,
+	Bounds,
+	Cache,
+	Container,
+	ContainerOptions,
+	DEG_TO_RAD,
+	DestroyOptions,
+	fastCopy,
+	Graphics,
+	PointData,
+	Texture,
+	Ticker,
+	ViewContainer,
+} from 'pixi.js';
+import { ISpineDebugRenderer } from './SpineDebugRenderer.js';
+import {
+	AnimationState,
+	AnimationStateData,
+	AtlasAttachmentLoader,
+	Attachment,
+	Bone,
+	ClippingAttachment,
+	Color,
+	MeshAttachment,
+	Physics,
+	Pool,
+	RegionAttachment,
+	Skeleton,
+	SkeletonBinary,
+	SkeletonBounds,
+	SkeletonClipping,
+	SkeletonData,
+	SkeletonJson,
+	Slot,
+	type TextureAtlas,
+	TrackEntry,
+	Vector2,
+} from '../core';
+
+/**
+ * Options to create a {@link Spine} using {@link Spine.from}.
+ */
 export interface SpineFromOptions {
 	/** the asset name for the skeleton `.skel` or `.json` file previously loaded into the Assets */
 	skeleton: string;
@@ -24,7 +93,7 @@ export interface SpineFromOptions {
 
 const vectorAux = new Vector2();
 
-// Skeleton.yDown = true;
+Skeleton.yDown = true;
 
 const clipper = new SkeletonClipping();
 
@@ -80,6 +149,10 @@ interface SlotsToClipping {
 
 const maskPool = new Pool<Graphics>(() => new Graphics);
 
+/**
+ * The class to instantiate a {@link Spine} game object in Pixi.
+ * The static method {@link Spine.from} should be used to instantiate a Spine game object.
+ */
 export class Spine extends ViewContainer {
 	// Pixi properties
 	public batched = true;
@@ -98,7 +171,7 @@ export class Spine extends ViewContainer {
 	public skeletonBounds?: SkeletonBounds;
 
 	private darkTint = false;
-	// private _debug?: ISpineDebugRenderer | undefined = undefined;
+	private _debug?: ISpineDebugRenderer | undefined = undefined;
 
 	readonly _slotsObject: Record<string, { slot: Slot, container: Container } | null> = Object.create(null);
 	private clippingSlotToPixiMasks: Record<string, SlotsToClipping> = Object.create(null);
@@ -123,22 +196,22 @@ export class Spine extends ViewContainer {
 	private _stateChanged = true;
 	private attachmentCacheData: Record<string, AttachmentCacheData>[] = [];
 
-	// public get debug (): ISpineDebugRenderer | undefined {
-	// 	return this._debug;
-	// }
+	public get debug (): ISpineDebugRenderer | undefined {
+		return this._debug;
+	}
 
 	/** Pass a {@link SpineDebugRenderer} or create your own {@link ISpineDebugRenderer} to render bones, meshes, ...
 	 * @example spineGO.debug = new SpineDebugRenderer();
 	 */
-	// public set debug (value: ISpineDebugRenderer | undefined) {
-	// 	if (this._debug) {
-	// 		this._debug.unregisterSpine(this);
-	// 	}
-	// 	if (value) {
-	// 		value.registerSpine(this);
-	// 	}
-	// 	this._debug = value;
-	// }
+	public set debug (value: ISpineDebugRenderer | undefined) {
+		if (this._debug) {
+			this._debug.unregisterSpine(this);
+		}
+		if (value) {
+			value.registerSpine(this);
+		}
+		this._debug = value;
+	}
 
 	private _autoUpdate = true;
 
@@ -195,7 +268,7 @@ export class Spine extends ViewContainer {
 		this._updateAndApplyState(deltaSeconds ?? Ticker.shared.deltaMS / 1000);
 	}
 
-	get bounds () {
+	override get bounds () {
 		if (this._boundsDirty) {
 			this.updateBounds();
 		}
@@ -277,7 +350,7 @@ export class Spine extends ViewContainer {
 		this.state.apply(skeleton);
 
 		this.beforeUpdateWorldTransforms(this);
-		// skeleton.updateWorldTransform(Physics.update);
+		skeleton.updateWorldTransform(Physics.update);
 		this.afterUpdateWorldTransforms(this);
 
 		this.updateSlotObjects();
@@ -407,7 +480,7 @@ export class Spine extends ViewContainer {
 					const cacheData = this._getCachedData(slot, attachment);
 
 					if (attachment instanceof RegionAttachment) {
-						attachment.computeWorldVertices(slot.bone, cacheData.vertices, 0, 2);
+						attachment.computeWorldVertices(slot, cacheData.vertices, 0, 2);
 					}
 					else {
 						attachment.computeWorldVertices(
@@ -447,7 +520,7 @@ export class Spine extends ViewContainer {
 
 					cacheData.skipRender = cacheData.clipped = false;
 
-					const texture = attachment.region?.renderObject.texture || Texture.EMPTY;
+					const texture = attachment.region?.texture.texture || Texture.EMPTY;
 
 					if (cacheData.texture !== texture) {
 						cacheData.texture = texture;
@@ -591,7 +664,7 @@ export class Spine extends ViewContainer {
 				darkColor: new Color(0, 0, 0, 0),
 				darkTint: this.darkTint,
 				skipRender: false,
-				texture: attachment.region?.renderObject.texture,
+				texture: attachment.region?.texture.texture,
 			};
 		}
 		else {
@@ -607,7 +680,7 @@ export class Spine extends ViewContainer {
 				darkColor: new Color(0, 0, 0, 0),
 				darkTint: this.darkTint,
 				skipRender: false,
-				texture: attachment.region?.renderObject.texture,
+				texture: attachment.region?.texture.texture,
 			};
 		}
 
@@ -616,8 +689,7 @@ export class Spine extends ViewContainer {
 
 	protected onViewUpdate () {
 		// increment from the 12th bit!
-		this._didChangeId += 1 << 12;
-
+		this._didViewChangeTick++;
 		this._boundsDirty = true;
 
 		if (this.didViewUpdate) return;
@@ -629,7 +701,7 @@ export class Spine extends ViewContainer {
 			renderGroup.onChildViewUpdate(this);
 		}
 
-		// this.debug?.renderDebug(this);
+		this.debug?.renderDebug(this);
 	}
 
 	/**
@@ -707,7 +779,7 @@ export class Spine extends ViewContainer {
 		return this._slotsObject[slot.data.name]?.container;
 	}
 
-	private updateBounds () {
+	protected updateBounds () {
 		this._boundsDirty = false;
 
 		this.skeletonBounds ||= new SkeletonBounds();
@@ -765,7 +837,7 @@ export class Spine extends ViewContainer {
 
 		Ticker.shared.remove(this.internalUpdate, this);
 		this.state.clearListeners();
-		// this.debug = undefined;
+		this.debug = undefined;
 		this.skeleton = null as any;
 		this.state = null as any;
 		(this._slotsObject as any) = null;
