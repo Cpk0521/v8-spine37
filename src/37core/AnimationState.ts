@@ -817,7 +817,7 @@ export enum EventType {
 	start, interrupt, end, dispose, complete, event
 }
 
-export interface AnimationStateListener {
+export interface AnimationStateListener2 {
 	/** Invoked when this entry has been set as the current entry. */
 	start?: (entry: TrackEntry) => void;
 
@@ -837,28 +837,6 @@ export interface AnimationStateListener {
 
 	/** Invoked when this entry's animation triggers an event. */
 	event?: (entry: TrackEntry, event: Event) => void;
-}
-
-export interface AnimationStateListener2 {
-	/** Invoked when this entry has been set as the current entry. */
-	start (entry: TrackEntry): void;
-
-	/** Invoked when another entry has replaced this entry as the current entry. This entry may continue being applied for
-	 * mixing. */
-	interrupt (entry: TrackEntry): void;
-
-	/** Invoked when this entry is no longer the current entry and will never be applied again. */
-	end (entry: TrackEntry): void;
-
-	/** Invoked when this entry will be disposed. This may occur without the entry ever being set as the current entry.
-	 * References to the entry should not be kept after dispose is called, as it may be destroyed or reused. */
-	dispose (entry: TrackEntry): void;
-
-	/** Invoked every time this entry's animation completes a loop. */
-	complete (entry: TrackEntry): void;
-
-	/** Invoked when this entry's animation triggers an event. */
-	event (entry: TrackEntry, event: Event): void;
 }
 
 export abstract class AnimationStateAdapter2 implements AnimationStateListener2 {

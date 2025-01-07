@@ -238,7 +238,6 @@ export class Spine extends ViewContainer {
 		const skeletonData = options instanceof SkeletonData ? options : options.skeletonData;
 
 		this.skeleton = new Skeleton(skeletonData);
-		this.skeleton.setSkinByName('default');
 		this.state = new AnimationState(new AnimationStateData(skeletonData));
 		this.autoUpdate = options?.autoUpdate ?? true;
 

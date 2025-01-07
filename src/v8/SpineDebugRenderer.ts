@@ -37,7 +37,7 @@ import {
 	SkeletonBounds
 } from '../37core/index.js';
 
-import type { AnimationStateListener } from '../37core/index.js';
+import type { AnimationStateListener2 } from '../37core/index.js';
 
 /**
  * Make a class that extends from this interface to create your own debug renderer.
@@ -74,7 +74,7 @@ type DebugDisplayObjects = {
 	pathsLine: Graphics;
 	parentDebugContainer: Container;
 	eventText: Container;
-	eventCallback: AnimationStateListener;
+	eventCallback: AnimationStateListener2;
 };
 
 /**
@@ -369,7 +369,7 @@ export class SpineDebugRenderer implements ISpineDebugRenderer {
 
 			const vertices = new Float32Array(8);
 
-			regionAttachment.computeWorldVertices(slot, vertices, 0, 2);
+			regionAttachment.computeWorldVertices(slot.bone, vertices, 0, 2);
 
 			debugDisplayObjects.regionAttachmentsShape.poly(Array.from(vertices.slice(0, 8)));
 		}
@@ -387,7 +387,7 @@ export class SpineDebugRenderer implements ISpineDebugRenderer {
 		for (let i = 0, len = slots.length; i < len; i++) {
 			const slot = slots[i];
 
-			if (!slot.bone.active) {
+			if (!slot.bone.isActive) {
 				continue;
 			}
 			const attachment = slot.getAttachment();
@@ -447,7 +447,7 @@ export class SpineDebugRenderer implements ISpineDebugRenderer {
 		for (let i = 0, len = slots.length; i < len; i++) {
 			const slot = slots[i];
 
-			if (!slot.bone.active) {
+			if (!slot.bone.isActive) {
 				continue;
 			}
 			const attachment = slot.getAttachment();
@@ -532,7 +532,7 @@ export class SpineDebugRenderer implements ISpineDebugRenderer {
 		for (let i = 0, len = slots.length; i < len; i++) {
 			const slot = slots[i];
 
-			if (!slot.bone.active) {
+			if (!slot.bone.isActive) {
 				continue;
 			}
 			const attachment = slot.getAttachment();

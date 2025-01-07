@@ -11,7 +11,6 @@ import { Spine, SpineDebugRenderer } from "./v8";
 
     await app.init({
         hello : true,
-        preference : 'webgl',
         width : 1334,
         height : 750,
         backgroundColor : 0x000000,
@@ -48,7 +47,7 @@ import { Spine, SpineDebugRenderer } from "./v8";
     const model = Spine.from({
         skeleton : 'modelskel',
         atlas : 'modelatlas',
-        scale : 1
+        scale : .7
     })
 
 
