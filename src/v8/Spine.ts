@@ -52,11 +52,9 @@ import {
 	ClippingAttachment,
 	Color,
 	MeshAttachment,
-	Physics,
 	Pool,
 	RegionAttachment,
 	Skeleton,
-	SkeletonBinary,
 	SkeletonBounds,
 	SkeletonClipping,
 	SkeletonData,
@@ -65,13 +63,13 @@ import {
 	type TextureAtlas,
 	TrackEntry,
 	Vector2,
-} from '../core';
+} from '../37core/index.js';
 
 /**
  * Options to create a {@link Spine} using {@link Spine.from}.
  */
 export interface SpineFromOptions {
-	/** the asset name for the skeleton `.skel` or `.json` file previously loaded into the Assets */
+	/** the asset name for the skeleton `.json` file previously loaded into the Assets */
 	skeleton: string;
 
 	/** the asset name for the atlas file previously loaded into the Assets */
@@ -92,8 +90,6 @@ export interface SpineFromOptions {
 };
 
 const vectorAux = new Vector2();
-
-Skeleton.yDown = true;
 
 const clipper = new SkeletonClipping();
 
@@ -242,6 +238,7 @@ export class Spine extends ViewContainer {
 		const skeletonData = options instanceof SkeletonData ? options : options.skeletonData;
 
 		this.skeleton = new Skeleton(skeletonData);
+		this.skeleton.setSkinByName('default');
 		this.state = new AnimationState(new AnimationStateData(skeletonData));
 		this.autoUpdate = options?.autoUpdate ?? true;
 
@@ -251,7 +248,7 @@ export class Spine extends ViewContainer {
 			: options?.darkTint;
 
 		const slots = this.skeleton.slots;
-
+		
 		for (let i = 0; i < slots.length; i++) {
 			this.attachmentCacheData[i] = Object.create(null);
 		}
@@ -350,7 +347,7 @@ export class Spine extends ViewContainer {
 		this.state.apply(skeleton);
 
 		this.beforeUpdateWorldTransforms(this);
-		skeleton.updateWorldTransform(Physics.update);
+		skeleton.updateWorldTransform();
 		this.afterUpdateWorldTransforms(this);
 
 		this.updateSlotObjects();
@@ -480,7 +477,7 @@ export class Spine extends ViewContainer {
 					const cacheData = this._getCachedData(slot, attachment);
 
 					if (attachment instanceof RegionAttachment) {
-						attachment.computeWorldVertices(slot, cacheData.vertices, 0, 2);
+						attachment.computeWorldVertices(slot.bone, cacheData.vertices, 0, 2);
 					}
 					else {
 						attachment.computeWorldVertices(
@@ -683,7 +680,8 @@ export class Spine extends ViewContainer {
 				texture: attachment.region?.texture.texture,
 			};
 		}
-
+		
+		
 		return this.attachmentCacheData[slot.data.index][attachment.name];
 	}
 
@@ -887,13 +885,11 @@ export class Spine extends ViewContainer {
 			return new Spine(Cache.get<SkeletonData>(cacheKey));
 		}
 
-		const skeletonAsset = Assets.get<any | Uint8Array>(skeleton);
+		const skeletonAsset = Assets.get<any>(skeleton);
 
 		const atlasAsset = Assets.get<TextureAtlas>(atlas);
 		const attachmentLoader = new AtlasAttachmentLoader(atlasAsset);
-		const parser = skeletonAsset instanceof Uint8Array
-			? new SkeletonBinary(attachmentLoader)
-			: new SkeletonJson(attachmentLoader);
+		const parser = new SkeletonJson(attachmentLoader);
 
 		parser.scale = scale;
 		const skeletonData = parser.readSkeletonData(skeletonAsset);

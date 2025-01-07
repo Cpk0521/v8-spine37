@@ -1,4 +1,4 @@
-/** ****************************************************************************
+/******************************************************************************
  * Spine Runtimes License Agreement
  * Last updated July 28, 2023. Replaces all prior versions.
  *
@@ -27,55 +27,34 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-import {
-	type AssetExtension,
-	checkExtension,
-	DOMAdapter,
-	extensions,
-	ExtensionType,
-	LoaderParserPriority,
-	ResolvedAsset
-} from 'pixi.js';
+import { Skin } from "../Skin";
+import { BoundingBoxAttachment } from "./BoundingBoxAttachment";
+import { ClippingAttachment } from "./ClippingAttachment";
+import { MeshAttachment } from "./MeshAttachment";
+import { PathAttachment } from "./PathAttachment";
+import { PointAttachment } from "./PointAttachment";
+import { RegionAttachment } from "./RegionAttachment";
 
-type SkeletonJsonAsset = any;
-// type SkeletonBinaryAsset = Uint8Array;
+/** The interface which can be implemented to customize creating and populating attachments.
+ *
+ * See [Loading skeleton data](http://esotericsoftware.com/spine-loading-skeleton-data#AttachmentLoader) in the Spine
+ * Runtimes Guide. */
+export interface AttachmentLoader {
+	/** @return May be null to not load an attachment. */
+	newRegionAttachment (skin: Skin, name: string, path: string): RegionAttachment;
 
-function isJson (resource: any): resource is SkeletonJsonAsset {
-	return Object.prototype.hasOwnProperty.call(resource, 'bones');
+	/** @return May be null to not load an attachment. */
+	newMeshAttachment (skin: Skin, name: string, path: string) : MeshAttachment;
+
+	/** @return May be null to not load an attachment. */
+	newBoundingBoxAttachment (skin: Skin, name: string) : BoundingBoxAttachment;
+
+	/** @return May be null to not load an attachment */
+	newPathAttachment(skin: Skin, name: string): PathAttachment;
+
+	/** @return May be null to not load an attachment */
+	newPointAttachment(skin: Skin, name: string): PointAttachment;
+
+	/** @return May be null to not load an attachment */
+	newClippingAttachment(skin: Skin, name: string): ClippingAttachment;
 }
-
-// function isBuffer (resource: any): resource is SkeletonBinaryAsset {
-// 	return resource instanceof Uint8Array;
-// }
-
-const spineLoaderExtension: AssetExtension<SkeletonJsonAsset> = {
-	extension: ExtensionType.Asset,
-
-	loader: {
-		extension: {
-			type: ExtensionType.LoadParser,
-			priority: LoaderParserPriority.Normal,
-			name: 'spineSkeletonLoader',
-		},
-
-		test (url) {
-			return checkExtension(url, '.json');
-		},
-
-		// async load (url: string): Promise<SkeletonJsonAsset> {
-		// 	const response = await DOMAdapter.get().fetch(url);
-
-		// 	const json = await response.json();
-			
-		// 	return json;
-		// },
-		testParse (asset: unknown, options: ResolvedAsset): Promise<boolean> {
-			const isJsonSpineModel = checkExtension(options.src!, '.json') && isJson(asset);
-			// const isBinarySpineModel = checkExtension(options.src!, '.skel') && isBuffer(asset);
-
-			return Promise.resolve(isJsonSpineModel);
-		},
-	},
-} as AssetExtension<SkeletonJsonAsset>;
-
-// extensions.add(spineLoaderExtension);

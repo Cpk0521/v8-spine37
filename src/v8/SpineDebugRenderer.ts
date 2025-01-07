@@ -35,9 +35,9 @@ import {
 	PathAttachment,
 	RegionAttachment,
 	SkeletonBounds
-} from '../core';
+} from '../37core/index.js';
 
-import type { AnimationStateListener } from '../core';
+import type { AnimationStateListener } from '../37core/index.js';
 
 /**
  * Make a class that extends from this interface to create your own debug renderer.

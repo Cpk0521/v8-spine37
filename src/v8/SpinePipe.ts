@@ -38,7 +38,7 @@ import {
 } from 'pixi.js';
 import { BatchableSpineSlot } from './BatchableSpineSlot.js';
 import { Spine } from './Spine.js';
-import { MeshAttachment, RegionAttachment } from '../core';
+import { MeshAttachment, RegionAttachment } from '../37core/index.js';
 
 const spineBlendModeMap: Record<number, BLEND_MODES> = {
 	0: 'normal',

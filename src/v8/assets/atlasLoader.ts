@@ -38,7 +38,7 @@ import {
 	TextureSource
 } from 'pixi.js';
 import { SpineTexture } from '../SpineTexture';
-import { TextureAtlas } from '../../core';
+import { TextureAtlas } from '../../37core';
 
 import type { AssetExtension, Loader, ResolvedAsset, Texture, UnresolvedAsset } from 'pixi.js';
 

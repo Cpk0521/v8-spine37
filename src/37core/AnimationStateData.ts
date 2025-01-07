@@ -1,4 +1,4 @@
-/** ****************************************************************************
+/******************************************************************************
  * Spine Runtimes License Agreement
  * Last updated July 28, 2023. Replaces all prior versions.
  *
@@ -27,55 +27,40 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-import {
-	type AssetExtension,
-	checkExtension,
-	DOMAdapter,
-	extensions,
-	ExtensionType,
-	LoaderParserPriority,
-	ResolvedAsset
-} from 'pixi.js';
+import { Animation } from "./Animation";
+import { SkeletonData } from "./SkeletonData";
+import { Map } from "./Utils";
 
-type SkeletonJsonAsset = any;
-// type SkeletonBinaryAsset = Uint8Array;
 
-function isJson (resource: any): resource is SkeletonJsonAsset {
-	return Object.prototype.hasOwnProperty.call(resource, 'bones');
+/** Stores mix (crossfade) durations to be applied when {@link AnimationState} animations are changed. */
+export class AnimationStateData {
+	skeletonData: SkeletonData;
+	animationToMixTime: Map<number> = { };
+	defaultMix = 0;
+
+	constructor (skeletonData: SkeletonData) {
+		if (skeletonData == null) throw new Error("skeletonData cannot be null.");
+		this.skeletonData = skeletonData;
+	}
+
+	setMix (fromName: string, toName: string, duration: number) {
+		let from = this.skeletonData.findAnimation(fromName);
+		if (from == null) throw new Error("Animation not found: " + fromName);
+		let to = this.skeletonData.findAnimation(toName);
+		if (to == null) throw new Error("Animation not found: " + toName);
+		this.setMixWith(from, to, duration);
+	}
+
+	setMixWith (from: Animation, to: Animation, duration: number) {
+		if (from == null) throw new Error("from cannot be null.");
+		if (to == null) throw new Error("to cannot be null.");
+		let key = from.name + "." + to.name;
+		this.animationToMixTime[key] = duration;
+	}
+
+	getMix (from: Animation, to: Animation) {
+		let key = from.name + "." + to.name;
+		let value = this.animationToMixTime[key];
+		return value === undefined ? this.defaultMix : value;
+	}
 }
-
-// function isBuffer (resource: any): resource is SkeletonBinaryAsset {
-// 	return resource instanceof Uint8Array;
-// }
-
-const spineLoaderExtension: AssetExtension<SkeletonJsonAsset> = {
-	extension: ExtensionType.Asset,
-
-	loader: {
-		extension: {
-			type: ExtensionType.LoadParser,
-			priority: LoaderParserPriority.Normal,
-			name: 'spineSkeletonLoader',
-		},
-
-		test (url) {
-			return checkExtension(url, '.json');
-		},
-
-		// async load (url: string): Promise<SkeletonJsonAsset> {
-		// 	const response = await DOMAdapter.get().fetch(url);
-
-		// 	const json = await response.json();
-			
-		// 	return json;
-		// },
-		testParse (asset: unknown, options: ResolvedAsset): Promise<boolean> {
-			const isJsonSpineModel = checkExtension(options.src!, '.json') && isJson(asset);
-			// const isBinarySpineModel = checkExtension(options.src!, '.skel') && isBuffer(asset);
-
-			return Promise.resolve(isJsonSpineModel);
-		},
-	},
-} as AssetExtension<SkeletonJsonAsset>;
-
-// extensions.add(spineLoaderExtension);

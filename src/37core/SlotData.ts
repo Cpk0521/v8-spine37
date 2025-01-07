@@ -1,4 +1,4 @@
-/** ****************************************************************************
+/******************************************************************************
  * Spine Runtimes License Agreement
  * Last updated July 28, 2023. Replaces all prior versions.
  *
@@ -27,55 +27,28 @@
  * SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *****************************************************************************/
 
-import {
-	type AssetExtension,
-	checkExtension,
-	DOMAdapter,
-	extensions,
-	ExtensionType,
-	LoaderParserPriority,
-	ResolvedAsset
-} from 'pixi.js';
+import { BoneData } from "./BoneData";
+import { Color } from "./Utils";
 
-type SkeletonJsonAsset = any;
-// type SkeletonBinaryAsset = Uint8Array;
+/** Stores the setup pose for a {@link Slot}. */
+export class SlotData {
+	index: number;
+	name: string;
+	boneData: BoneData;
+	color = new Color(1, 1, 1, 1);
+	darkColor: Color;
+	attachmentName: string;
+	blendMode: BlendMode;
 
-function isJson (resource: any): resource is SkeletonJsonAsset {
-	return Object.prototype.hasOwnProperty.call(resource, 'bones');
+	constructor (index: number, name: string, boneData: BoneData) {
+		if (index < 0) throw new Error("index must be >= 0.");
+		if (name == null) throw new Error("name cannot be null.");
+		if (boneData == null) throw new Error("boneData cannot be null.");
+		this.index = index;
+		this.name = name;
+		this.boneData = boneData;
+	}
 }
 
-// function isBuffer (resource: any): resource is SkeletonBinaryAsset {
-// 	return resource instanceof Uint8Array;
-// }
-
-const spineLoaderExtension: AssetExtension<SkeletonJsonAsset> = {
-	extension: ExtensionType.Asset,
-
-	loader: {
-		extension: {
-			type: ExtensionType.LoadParser,
-			priority: LoaderParserPriority.Normal,
-			name: 'spineSkeletonLoader',
-		},
-
-		test (url) {
-			return checkExtension(url, '.json');
-		},
-
-		// async load (url: string): Promise<SkeletonJsonAsset> {
-		// 	const response = await DOMAdapter.get().fetch(url);
-
-		// 	const json = await response.json();
-			
-		// 	return json;
-		// },
-		testParse (asset: unknown, options: ResolvedAsset): Promise<boolean> {
-			const isJsonSpineModel = checkExtension(options.src!, '.json') && isJson(asset);
-			// const isBinarySpineModel = checkExtension(options.src!, '.skel') && isBuffer(asset);
-
-			return Promise.resolve(isJsonSpineModel);
-		},
-	},
-} as AssetExtension<SkeletonJsonAsset>;
-
-// extensions.add(spineLoaderExtension);
+/** Determines how images are blended with existing pixels when drawn. */
+export enum BlendMode { Normal, Additive, Multiply, Screen }
