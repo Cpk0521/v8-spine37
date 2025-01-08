@@ -54,7 +54,7 @@ export class Skeleton {
 	skin: Skin;
 	color: Color;
 	time = 0;
-	scaleX = 1; scaleY = 1;
+	scaleX = 1; scaleY = -1; //ydown remove
 	x = 0; y = 0;
 
 	constructor (data: SkeletonData) {

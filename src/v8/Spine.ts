@@ -209,14 +209,14 @@ export class Spine extends ViewContainer {
 		this._debug = value;
 	}
 
-	private _autoUpdate = true;
+	private _autoUpdate = false;
 
 	public get autoUpdate (): boolean {
 		return this._autoUpdate;
 	}
 	/** When `true`, the Spine AnimationState and the Skeleton will be automatically updated using the {@link Ticker.shared} instance. */
 	public set autoUpdate (value: boolean) {
-		if (value) {
+		if (value && !this._autoUpdate) {
 			Ticker.shared.add(this.internalUpdate, this);
 		} else {
 			Ticker.shared.remove(this.internalUpdate, this);
@@ -290,7 +290,6 @@ export class Spine extends ViewContainer {
 
 		if (bone.parent) {
 			const aux = bone.parent.worldToLocal(vectorAux);
-
 			bone.x = aux.x;
 			bone.y = -aux.y;
 		}

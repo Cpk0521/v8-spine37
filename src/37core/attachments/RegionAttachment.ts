@@ -29,7 +29,7 @@
 
 import { Bone } from "../Bone";
 import { TextureRegion } from "../Texture";
-import { Color, ArrayLike, Utils } from "../Utils";
+import { Color, ArrayLike, Utils, MathUtils } from "../Utils";
 import { Attachment } from "./Attachment";
 
 /** An attachment that displays a textured quadrilateral.
@@ -104,7 +104,7 @@ import { Attachment } from "./Attachment";
 		let localY = -this.height / 2 * this.scaleY + this.region.offsetY * regionScaleY;
 		let localX2 = localX + this.region.width * regionScaleX;
 		let localY2 = localY + this.region.height * regionScaleY;
-		let radians = this.rotation * Math.PI / 180;
+		let radians = this.rotation * MathUtils.degRad;
 		let cos = Math.cos(radians);
 		let sin = Math.sin(radians);
 		let localXCos = localX * cos + this.x;
@@ -130,14 +130,14 @@ import { Attachment } from "./Attachment";
 		this.region = region;
 		let uvs = this.uvs;
 		if (region.rotate) {
+			uvs[0] = region.u2;
+			uvs[1] = region.v2;
 			uvs[2] = region.u;
 			uvs[3] = region.v2;
 			uvs[4] = region.u;
 			uvs[5] = region.v;
 			uvs[6] = region.u2;
 			uvs[7] = region.v;
-			uvs[0] = region.u2;
-			uvs[1] = region.v2;
 		} else {
 			uvs[0] = region.u;
 			uvs[1] = region.v2;

@@ -1,7 +1,5 @@
 import { Application, Assets } from "pixi.js";
-import './v8/assets/atlasLoader';
-import './v8/assets/skeletonLoader'
-import './v8/SpinePipe'
+import './v8'
 import { Spine, SpineDebugRenderer } from "./v8";
 
 
@@ -14,6 +12,7 @@ import { Spine, SpineDebugRenderer } from "./v8";
         width : 1334,
         height : 750,
         backgroundColor : 0x000000,
+        resizeTo : window
     });
 
     globalThis.__PIXI_APP__ = app;
@@ -47,17 +46,15 @@ import { Spine, SpineDebugRenderer } from "./v8";
     const model = Spine.from({
         skeleton : 'modelskel',
         atlas : 'modelatlas',
-        scale : .7
+        scale : .6
     })
-
-
     // model.debug = new SpineDebugRenderer();
 
     // //SC
     model.state.setAnimation(0, "wait", true);
-    // window.addEventListener('click', ()=>{
-    //     model.state.setAnimation(0, "anger1", false);
-    // })
+    window.addEventListener('click', ()=>{
+        model.state.setAnimation(0, "anger1", false);
+    })
 
     // //CUE
     // // window.addEventListener('click', ()=>{

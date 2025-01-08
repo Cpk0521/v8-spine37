@@ -29,7 +29,7 @@
 
 import './require-shim'; // Side effects add require pixi.js to global scope
 import './assets/atlasLoader'; // Side effects install the loaders into pixi
-import './assets/skeletonLoader'; // Side effects install the loaders into pixi
+// import './assets/skeletonLoader'; // Side effects install the loaders into pixi
 import './darktint/DarkTintBatcher'; // Side effects install the batcher into pixi
 import './SpinePipe';
 
