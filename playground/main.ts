@@ -1,7 +1,6 @@
 import { Application, Assets } from "pixi.js";
-import './v8'
-import { Spine, SpineDebugRenderer } from "./v8";
-
+import '../src'
+import { Spine, SpineDebugRenderer } from "../src";
 
 (async ()=>{
 
@@ -27,8 +26,8 @@ import { Spine, SpineDebugRenderer } from "./v8";
 
     // SC
     await Assets.load([
-        {alias: 'modelskel', src: 'data.json'},
-        {alias: 'modelatlas', src: 'data.atlas'}
+        {alias: 'modelskel', src: './public/data.json'},
+        {alias: 'modelatlas', src: './public/data.atlas'}
     ])
 
     // CUE

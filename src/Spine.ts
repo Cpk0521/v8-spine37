@@ -63,7 +63,7 @@ import {
 	type TextureAtlas,
 	TrackEntry,
 	Vector2,
-} from '../37core/index.js';
+} from './37core/index.js';
 
 /**
  * Options to create a {@link Spine} using {@link Spine.from}.
@@ -883,12 +883,15 @@ export class Spine extends ViewContainer {
 			return new Spine(Cache.get<SkeletonData>(cacheKey));
 		}
 
-		const skeletonAsset = Assets.get<any>(skeleton);
+		const skeletonAsset = Assets.get<any | Uint8Array>(skeleton);
 
 		const atlasAsset = Assets.get<TextureAtlas>(atlas);
 		const attachmentLoader = new AtlasAttachmentLoader(atlasAsset);
+		if(skeletonAsset instanceof Uint8Array){
+			throw new Error('Spine 3.7 does not support binary skeleton data.');
+		}
 		const parser = new SkeletonJson(attachmentLoader);
-
+		
 		parser.scale = scale;
 		const skeletonData = parser.readSkeletonData(skeletonAsset);
 

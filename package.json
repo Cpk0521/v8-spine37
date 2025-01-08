@@ -1,18 +1,44 @@
 {
-  "name": "v8-spine38",
-  "private": true,
-  "version": "0.0.0",
+  "name": "v8-spine37",
+  "description": "spine 3.7 plugin for PixiJs v8",
+  "version": "1.0.0",
   "type": "module",
+  "files": ["dist"],
+  "main": "./dist/v8-spine37.js",
+  "module": "./dist/v8-spine37.js",
+  "exports" : {
+    ".": {
+      "import": "./dist/v8-spine37.js",
+      "require": "./dist/v8-spine37.js"
+    }
+  },
+  "namespace": "PIXI.Spine37",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "rimraf dist && vite build",
     "preview": "vite preview"
   },
+  "keywords": [
+    "gamedev",
+    "animations",
+    "2d",
+    "spine",
+    "game-dev",
+    "runtimes",
+    "skeletal",
+    "pixijs"
+  ],
+  "author": "Esoteric Software LLC",
+  "license": "SEE SPINE-LICENSE",
+  "homepage": "https://github.com/esotericsoftware/spine-runtimes#readme",
   "devDependencies": {
+    "@types/node": "^22.10.5",
+    "pixi.js": "^8.5.2",
+    "rimraf": "^6.0.1",
     "typescript": "~5.6.2",
     "vite": "^5.4.10"
   },
-  "dependencies": {
+  "peerDependencies": {
     "pixi.js": "^8.5.2"
   }
 }

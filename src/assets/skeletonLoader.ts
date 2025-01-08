@@ -38,15 +38,15 @@ import {
 } from 'pixi.js';
 
 type SkeletonJsonAsset = any;
-// type SkeletonBinaryAsset = Uint8Array;
+type SkeletonBinaryAsset = Uint8Array;
 
 function isJson (resource: any): resource is SkeletonJsonAsset {
 	return Object.prototype.hasOwnProperty.call(resource, 'bones');
 }
 
-// function isBuffer (resource: any): resource is SkeletonBinaryAsset {
-// 	return resource instanceof Uint8Array;
-// }
+function isBuffer (resource: any): resource is SkeletonBinaryAsset {
+	return resource instanceof Uint8Array;
+}
 
 const spineLoaderExtension: AssetExtension<SkeletonJsonAsset> = {
 	extension: ExtensionType.Asset,
@@ -59,23 +59,23 @@ const spineLoaderExtension: AssetExtension<SkeletonJsonAsset> = {
 		},
 
 		test (url) {
-			return checkExtension(url, '.json');
+			return checkExtension(url, '.skel');
 		},
 
-		// async load (url: string): Promise<SkeletonJsonAsset> {
-		// 	const response = await DOMAdapter.get().fetch(url);
+		async load (url: string): Promise<SkeletonBinaryAsset> {
+			const response = await DOMAdapter.get().fetch(url);
 
-		// 	const json = await response.json();
-			
-		// 	return json;
-		// },
+			const buffer = new Uint8Array(await response.arrayBuffer());
+
+			return buffer;
+		},
 		testParse (asset: unknown, options: ResolvedAsset): Promise<boolean> {
 			const isJsonSpineModel = checkExtension(options.src!, '.json') && isJson(asset);
-			// const isBinarySpineModel = checkExtension(options.src!, '.skel') && isBuffer(asset);
+			const isBinarySpineModel = checkExtension(options.src!, '.skel') && isBuffer(asset);
 
-			return Promise.resolve(isJsonSpineModel);
+			return Promise.resolve(isJsonSpineModel || isBinarySpineModel);
 		},
 	},
 } as AssetExtension<SkeletonJsonAsset>;
 
-// extensions.add(spineLoaderExtension);
+extensions.add(spineLoaderExtension);

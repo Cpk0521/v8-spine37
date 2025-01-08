@@ -28,7 +28,7 @@
  *****************************************************************************/
 
 import { Texture as PixiTexture } from 'pixi.js';
-import { BlendMode, Texture, TextureFilter, TextureWrap } from '../37core';
+import { BlendMode, Texture, TextureFilter, TextureWrap } from './37core';
 
 import type { BLEND_MODES, SCALE_MODE, TextureSource, WRAP_MODE } from 'pixi.js';
 
