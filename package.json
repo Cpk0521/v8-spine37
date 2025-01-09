@@ -7,10 +7,12 @@
     "dist"
   ],
   "main": "./dist/v8-spine37.js",
-  "module": "./dist/v8-spine37.js",
+  "module": "./dist/v8-spine37.es.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/v8-spine37.js",
+      "types": "./dist/index.d.ts",
+      "import": "./dist/v8-spine37.es.js",
       "require": "./dist/v8-spine37.js"
     }
   },
