@@ -798,7 +798,7 @@ export class SkeletonJson {
 	}
 }
 
-class LinkedMesh {
+export class LinkedMesh {
 	parent: string; skin: string;
 	slotIndex: number;
 	mesh: MeshAttachment;

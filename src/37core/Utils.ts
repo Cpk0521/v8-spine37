@@ -123,6 +123,28 @@ export class Color {
 		else if (this.a > 1) this.a = 1;
 		return this;
 	}
+
+	static rgba8888ToColor (color: Color, value: number) {
+		color.r = ((value & 0xff000000) >>> 24) / 255;
+		color.g = ((value & 0x00ff0000) >>> 16) / 255;
+		color.b = ((value & 0x0000ff00) >>> 8) / 255;
+		color.a = ((value & 0x000000ff)) / 255;
+	}
+
+	static rgb888ToColor (color: Color, value: number) {
+		color.r = ((value & 0x00ff0000) >>> 16) / 255;
+		color.g = ((value & 0x0000ff00) >>> 8) / 255;
+		color.b = ((value & 0x000000ff)) / 255;
+	}
+
+	toRgb888 () {
+		const hex = (x: number) => ("0" + (x * 255).toString(16)).slice(-2);
+		return Number("0x" + hex(this.r) + hex(this.g) + hex(this.b));
+	}
+
+	static fromString (hex: string): Color {
+		return new Color().setFromString(hex);
+	}
 }
 
 export class MathUtils {

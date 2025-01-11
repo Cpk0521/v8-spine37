@@ -34,7 +34,7 @@ export class BoneData {
 	parent: BoneData;
 	length: number;
 	x = 0; y = 0; rotation = 0; scaleX = 1; scaleY = 1; shearX = 0; shearY = 0;
-	transformMode = TransformMode.Normal;
+	transformMode = TransformMode.Normal;	
 
 	constructor (index: number, name: string, parent: BoneData) {
 		if (index < 0) throw new Error("index must be >= 0.");

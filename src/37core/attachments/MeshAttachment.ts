@@ -46,6 +46,9 @@ import { VertexAttachment, Attachment } from "./Attachment";
 	private parentMesh: MeshAttachment;
 	inheritDeform = false;
 	tempColor = new Color(0, 0, 0, 0);
+	edges: Array<number> = [];
+	width: number = 0;
+	height: number = 0;
 
 	constructor (name: string) {
 		super(name);

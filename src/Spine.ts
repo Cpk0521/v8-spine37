@@ -55,6 +55,7 @@ import {
 	Pool,
 	RegionAttachment,
 	Skeleton,
+	SkeletonBinary,
 	SkeletonBounds,
 	SkeletonClipping,
 	SkeletonData,
@@ -887,10 +888,13 @@ export class Spine extends ViewContainer {
 
 		const atlasAsset = Assets.get<TextureAtlas>(atlas);
 		const attachmentLoader = new AtlasAttachmentLoader(atlasAsset);
-		if(skeletonAsset instanceof Uint8Array){
-			throw new Error('Spine 3.7 does not support binary skeleton data.');
-		}
-		const parser = new SkeletonJson(attachmentLoader);
+		// if(skeletonAsset instanceof Uint8Array){
+		// 	throw new Error('Spine 3.7 does not support binary skeleton data.');
+		// }
+		// const parser = new SkeletonJson(attachmentLoader);
+		const parser = skeletonAsset instanceof Uint8Array
+		? new SkeletonBinary(attachmentLoader)
+		: new SkeletonJson(attachmentLoader);
 		
 		parser.scale = scale;
 		const skeletonData = parser.readSkeletonData(skeletonAsset);

@@ -17,6 +17,7 @@ export * from './SkeletonBounds';
 export * from './SkeletonClipping';
 export * from './SkeletonData';
 export * from './SkeletonJson';
+export * from './SkeletonBinary';
 export * from './Skin';
 export * from './Slot';
 export * from './SlotData';

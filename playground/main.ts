@@ -25,16 +25,16 @@ import { Spine, SpineDebugRenderer } from "../src";
     // ])
 
     // SC
-    await Assets.load([
-        {alias: 'modelskel', src: './public/data.json'},
-        {alias: 'modelatlas', src: './public/data.atlas'}
-    ])
+    // await Assets.load([
+    //     {alias: 'modelskel', src: './public/data.json'},
+    //     {alias: 'modelatlas', src: './public/data.atlas'}
+    // ])
 
     // CUE
-    // await Assets.load([
-    //     {alias: 'modelskel', src: './root.json'},
-    //     {alias: 'modelatlas', src: './root.atlas'}
-    // ])
+    await Assets.load([
+        {alias: 'modelskel', src: './public/root.skel'},
+        {alias: 'modelatlas', src: './public/root.atlas'}
+    ])
     
     // SPIME simple
     // await Assets.load([
@@ -50,14 +50,14 @@ import { Spine, SpineDebugRenderer } from "../src";
     // model.debug = new SpineDebugRenderer();
 
     // //SC
-    model.state.setAnimation(0, "wait", true);
-    window.addEventListener('click', ()=>{
-        model.state.setAnimation(0, "anger1", false);
-    })
+    // model.state.setAnimation(0, "wait", true);
+    // window.addEventListener('click', ()=>{
+    //     model.state.setAnimation(0, "anger1", false);
+    // })
 
     // //CUE
     // // window.addEventListener('click', ()=>{
-    // //     model.state.setAnimation(0, "01_001_wait", false);
+        model.state.setAnimation(0, "01_001_wait", true);
     // // })
 
     model.x = 500;
