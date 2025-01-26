@@ -18,12 +18,6 @@ import { Spine, SpineDebugRenderer } from "../src";
 
     document.body.appendChild(app.canvas);
 
-    // WDS
-    // await Assets.load([
-    //     {alias: 'modelskel', src: 'https://raw.githubusercontent.com/nan0521/WDS-Adv-Resource/main/spine/10201.skel'},
-    //     {alias: 'modelatlas', src: 'https://raw.githubusercontent.com/nan0521/WDS-Adv-Resource/main/spine/10201.atlas'}
-    // ])
-
     // SC
     // await Assets.load([
     //     {alias: 'modelskel', src: './public/data.json'},
@@ -35,12 +29,6 @@ import { Spine, SpineDebugRenderer } from "../src";
         {alias: 'modelskel', src: './public/root.skel'},
         {alias: 'modelatlas', src: './public/root.atlas'}
     ])
-    
-    // SPIME simple
-    // await Assets.load([
-    //     {alias: 'modelskel', src: './spineboy-pro.json'},
-    //     {alias: 'modelatlas', src: './spineboy-pma.atlas'}
-    // ])
 
     const model = Spine.from({
         skeleton : 'modelskel',
